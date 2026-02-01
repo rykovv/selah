@@ -1,40 +1,147 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row" style="height: 80vh;">
+<div class="d-flex border rounded shadow-sm overflow-hidden bg-white" style="height: 80vh; position: relative;">
 
-    <div class="col-md-4 h-100 d-flex flex-column">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-primary text-white">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="mb-0">Library</h5>
-                    <button class="btn btn-sm btn-light text-primary" hx-get="/hymns/form" hx-target="#editor-canvas">
-                        + New Hymn
-                    </button>
-                </div>
+    <div id="sidebar-panel" class="border-end d-flex flex-column bg-light"
+        style="width: 350px; white-space: nowrap; overflow: hidden; flex-shrink: 0; min-width: 0;">
 
-                <input type="text" name="q" class="form-control form-control-sm"
-                    placeholder="Search Number, Title, Lyrics..." autocomplete="off" hx-get="/editor/search"
-                    hx-trigger="keyup changed delay:300ms, search" hx-target="#editor-list">
+        <div class="p-3 bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">Library</h5>
+                <button class="btn btn-sm btn-outline-light border-0" onclick="toggleSidebar()" title="Hide Sidebar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z" />
+                    </svg>
+                </button>
             </div>
 
-            <div class="card-body p-0 overflow-auto">
-                <div class="list-group list-group-flush" id="editor-list">
-                    {% include "partials/editor_list.html" %}
-                </div>
+            <div class="d-flex gap-2 mb-2">
+                <button class="btn btn-sm btn-light text-primary flex-grow-1" hx-get="/hymns/form"
+                    hx-target="#editor-canvas">
+                    + New Hymn
+                </button>
+            </div>
+
+            <input type="text" name="q" class="form-control form-control-sm"
+                placeholder="Search Number, Title, Lyrics..." autocomplete="off" hx-get="/editor/search"
+                hx-trigger="keyup changed delay:300ms, search, refreshLibrary from:body" hx-target="#editor-list">
+        </div>
+
+        <div class="flex-grow-1 overflow-auto">
+            <div class="list-group list-group-flush" id="editor-list">
+                {% include "partials/editor_list.html" %}
             </div>
         </div>
     </div>
 
-    <div class="col-md-8 h-100">
-        <div id="editor-canvas"
-            class="card shadow-sm h-100 p-4 d-flex justify-content-center align-items-center text-muted">
-            <div class="text-center">
-                <h4>Select a hymn to edit</h4>
-                <p>or click "+ New Hymn" to create one.</p>
+    <div id="drag-handle"
+        style="width: 5px; cursor: col-resize; background-color: #e9ecef; flex-shrink: 0; border-right: 1px solid #dee2e6; transition: background 0.2s;"
+        onmouseover="this.style.background='#adb5bd'" onmouseout="this.style.background='#e9ecef'">
+    </div>
+
+    <div class="flex-grow-1 position-relative d-flex flex-column" style="min-width: 0;">
+
+        <button id="sidebar-expander" class="btn btn-primary position-absolute shadow"
+            style="top: 15px; left: 15px; z-index: 1000; display: none; width: 40px; height: 40px; padding: 0; border-radius: 50%;"
+            onclick="toggleSidebar()" title="Show Library">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path fill-rule="evenodd"
+                    d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z" />
+            </svg>
+        </button>
+
+        <div id="editor-canvas" class="h-100 w-100" style="padding: 0; transition: padding-left 0.3s ease;">
+            <div class="d-flex h-100 justify-content-center align-items-center text-muted card-body">
+                <div class="text-center">
+                    <h4>Select a hymn to edit</h4>
+                    <p>or click "+ New Hymn" to create one.</p>
+                </div>
             </div>
         </div>
     </div>
 
 </div>
+
+<script>
+    const sidebar = document.getElementById('sidebar-panel');
+    const handle = document.getElementById('drag-handle');
+    const expander = document.getElementById('sidebar-expander');
+    const canvas = document.getElementById('editor-canvas');
+    let isResizing = false;
+    let lastWidth = 350;
+
+    // --- DRAG LOGIC ---
+    handle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const containerOffset = sidebar.parentElement.getBoundingClientRect().left;
+        let newWidth = e.clientX - containerOffset;
+
+        if (newWidth < 50) {
+            newWidth = 0;
+            showExpander();
+        } else {
+            if (newWidth < 200) newWidth = 200;
+            if (newWidth > 800) newWidth = 800;
+
+            hideExpander();
+            lastWidth = newWidth;
+        }
+
+        sidebar.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        isResizing = false;
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = '';
+    });
+
+    // --- TOGGLE LOGIC ---
+    function toggleSidebar() {
+        sidebar.style.transition = "width 0.3s ease";
+
+        if (sidebar.style.width === '0px') {
+            // OPEN
+            sidebar.style.width = lastWidth + 'px';
+            hideExpander();
+        } else {
+            // CLOSE
+            lastWidth = parseInt(sidebar.style.width) || 350;
+            sidebar.style.width = '0px';
+            setTimeout(() => {
+                showExpander();
+            }, 300);
+        }
+
+        setTimeout(() => {
+            sidebar.style.transition = "none";
+        }, 300);
+    }
+
+    // --- OVERLAP FIX HELPERS ---
+    function showExpander() {
+        expander.style.display = 'flex';
+        expander.style.justifyContent = 'center';
+        expander.style.alignItems = 'center';
+
+        // This pushes the form content to the right
+        // Now that 'p-0' is gone, this style will apply correctly
+        canvas.style.paddingLeft = '60px';
+    }
+
+    function hideExpander() {
+        expander.style.display = 'none';
+        canvas.style.paddingLeft = '0px';
+    }
+</script>
 {% endblock %}

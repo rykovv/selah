@@ -1,11 +1,26 @@
 <div class="d-flex flex-column h-100">
 
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0">
-        <h4 class="m-0">{{ 'Edit Hymn' if hymn else 'New Hymn' }}</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0 pt-1">
+
+        <h4 class="m-0 text-primary d-flex align-items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                <path
+                    d="M8.5 2.687c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z" />
+            </svg>
+            {{ 'Edit Hymn' if hymn else 'New Hymn' }}
+        </h4>
+
         {% if hymn %}
-        <button class="btn btn-outline-danger btn-sm" hx-delete="/hymns/{{ hymn.id }}" hx-confirm="Delete this hymn?"
-            hx-swap="none">
-            Delete
+        <button class="btn btn-outline-danger border-0 btn-sm d-flex align-items-center gap-2" title="Delete this Hymn"
+            hx-delete="/hymns/{{ hymn.id }}" hx-confirm="Are you sure you want to delete '{{ hymn.title }}'?"
+            hx-target="#editor-canvas"> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                fill="currentColor" viewBox="0 0 16 16">
+                <path
+                    d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                <path fill-rule="evenodd"
+                    d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
+            </svg>
+            <span class="d-none d-sm-inline">Delete</span>
         </button>
         {% endif %}
     </div>
@@ -67,11 +82,6 @@
 </div>
 
 <script>
-    /**
-     * Parsing Logic (Bracket Based):
-     * 1. Split text by DOUBLE Newline (\n\n).
-     * 2. Check if block starts with "[Label]".
-     */
     function parseBlocks() {
         const rawText = document.getElementById('master-editor').value;
         const blocks = rawText.split(/\n\s*\n/);
@@ -83,17 +93,10 @@
             let label = "";
             let content = block;
 
-            // REGEX UPDATE: 
-            // ^\[      -> Starts with open bracket
-            // (.*?)    -> Capture anything lazily (the label)
-            // \]       -> Closing bracket
-            // \s* -> Optional whitespace/newline
-            // ([\s\S]*)-> Capture the rest as content
             const match = block.match(/^\[(.*?)\]\s*([\s\S]*)/);
-
             if (match) {
-                label = match[1];   // e.g. "Verse 1"
-                content = match[2]; // The lyrics
+                label = match[1];
+                content = match[2];
             }
 
             return { label, content };
@@ -114,7 +117,6 @@
             const card = document.createElement('div');
             card.className = 'card mb-3 shadow-sm border-0';
 
-            // Smarter Badge Coloring based on text content
             let badgeClass = 'bg-secondary';
             const lowerLabel = slide.label.toLowerCase();
 
@@ -124,7 +126,7 @@
 
             const labelBadge = slide.label
                 ? `<span class="badge ${badgeClass} mb-2">${slide.label}</span>`
-                : `<span class="badge bg-light text-muted border mb-2">no label</span>`;
+                : `<span class="badge bg-light text-muted border mb-2">slide</span>`;
 
             card.innerHTML = `
                 <div class="card-body p-3">

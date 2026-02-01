@@ -286,11 +286,27 @@ def save_hymn(
 
 @app.delete("/hymns/{hymn_id}")
 def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
+    # 1. Manual Cascade: Remove from service plans
+    db.query(ServicePlanModel).filter(ServicePlanModel.hymn_id == hymn_id).delete()
+    
+    # 2. Delete the hymn
     hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
     if hymn:
         db.delete(hymn)
         db.commit()
-    return HTMLResponse("") # Return empty to remove row from UI
+
+    # 3. RETURN UI UPDATE
+    # We return the "Empty State" HTML to clear the editor form immediately.
+    # We ALSO send a custom header "HX-Trigger: refreshLibrary" which the sidebar listens for.
+    empty_state = """
+    <div class="d-flex h-100 justify-content-center align-items-center text-muted card-body">
+        <div class="text-center">
+            <h4>Hymn Deleted</h4>
+            <p>Select another hymn or click "+ New Hymn"</p>
+        </div>
+    </div>
+    """
+    return HTMLResponse(content=empty_state, headers={"HX-Trigger": "refreshLibrary"})
 
 
 @app.get("/library/search", response_class=HTMLResponse)
@@ -325,22 +341,22 @@ def search_library(request: Request, q: str = "", db: Session = Depends(get_db))
     })
 
 
-@app.delete("/hymns/{hymn_id}")
-def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
-    # 1. Manual Cascade: Remove this hymn from any Service Plans first
-    # This prevents the "Foreign Key Constraint" error
-    db.query(ServicePlanModel).filter(ServicePlanModel.hymn_id == hymn_id).delete()
+# @app.delete("/hymns/{hymn_id}")
+# def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
+#     # 1. Manual Cascade: Remove this hymn from any Service Plans first
+#     # This prevents the "Foreign Key Constraint" error
+#     db.query(ServicePlanModel).filter(ServicePlanModel.hymn_id == hymn_id).delete()
     
-    # 2. Find and delete the hymn
-    hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
-    if hymn:
-        db.delete(hymn)
-        db.commit()
+#     # 2. Find and delete the hymn
+#     hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
+#     if hymn:
+#         db.delete(hymn)
+#         db.commit()
         
-    # 3. HTMX Redirect
-    # Instead of returning HTML, we send a header that tells the browser 
-    # to load the /editor page. This prevents the "Race Condition".
-    return Response(status_code=200, headers={"HX-Redirect": "/editor"})
+#     # 3. HTMX Redirect
+#     # Instead of returning HTML, we send a header that tells the browser 
+#     # to load the /editor page. This prevents the "Race Condition".
+#     return Response(status_code=200, headers={"HX-Redirect": "/editor"})
 
 
 @app.get("/editor/search", response_class=HTMLResponse)
