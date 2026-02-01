@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text
 from sqlalchemy.orm import sessionmaker, Session, relationship, declarative_base
+from sqlalchemy import or_
 
 
 DATABASE_URL = "sqlite:///./hymns.db"
@@ -269,6 +270,38 @@ def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
         db.delete(hymn)
         db.commit()
     return HTMLResponse("") # Return empty to remove row from UI
+
+
+@app.get("/library/search", response_class=HTMLResponse)
+def search_library(request: Request, q: str = "", db: Session = Depends(get_db)):
+    """
+    Search hymns by Number, Title, or Slide Content.
+    Returns a partial HTML list.
+    """
+    query = db.query(HymnModel).outerjoin(SlideModel)
+    
+    if q:
+        search = f"%{q}%"
+        # The core search logic:
+        # 1. Match Number OR
+        # 2. Match Title OR
+        # 3. Match any Slide Content
+        query = query.filter(
+            or_(
+                HymnModel.number.ilike(search),
+                HymnModel.title.ilike(search),
+                SlideModel.content.ilike(search)
+            )
+        )
+    
+    # .distinct() is crucial because joining on slides might return 
+    # the same hymn multiple times if the keyword appears in multiple slides.
+    hymns = query.distinct().order_by(HymnModel.number).all()
+    
+    return templates.TemplateResponse("partials/library_list.html", {
+        "request": request, 
+        "library": hymns
+    })
 
 
 if __name__ == "__main__":

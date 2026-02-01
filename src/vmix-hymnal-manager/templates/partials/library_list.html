@@ -1,0 +1,17 @@
+{% if library %}
+{% for hymn in library %}
+<div class="list-group-item d-flex justify-content-between align-items-center">
+    <div>
+        <strong>{{ hymn.number }}</strong> {{ hymn.title }}
+    </div>
+    <form action="/plan/add" method="post">
+        <input type="hidden" name="hymn_id" value="{{ hymn.id }}">
+        <button type="submit" class="btn btn-sm btn-primary">Add to Service</button>
+    </form>
+</div>
+{% endfor %}
+{% else %}
+<div class="list-group-item text-muted text-center py-3">
+    No hymns found matching your search.
+</div>
+{% endif %}

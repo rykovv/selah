@@ -33,25 +33,18 @@
     </div>
 
     <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header">
-                <h5 class="mb-0">Hymn Library</h5>
-            </div>
-            <div class="card-body">
-                <input type="text" class="form-control mb-3" placeholder="Search hymns..." disabled>
+        <div class="card shadow-sm" style="height: 80vh; display: flex; flex-direction: column;">
+            <div class="card-header bg-light">
+                <h5 class="mb-2">Hymn Library</h5>
 
-                <div class="list-group">
-                    {% for hymn in library %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{ hymn.number }}</strong> {{ hymn.title }}
-                        </div>
-                        <form action="/plan/add" method="post">
-                            <input type="hidden" name="hymn_id" value="{{ hymn.id }}">
-                            <button type="submit" class="btn btn-sm btn-primary">Add to Service</button>
-                        </form>
-                    </div>
-                    {% endfor %}
+                <input type="text" name="q" class="form-control" placeholder="Search by Number, Title, or Lyrics..."
+                    autocomplete="off" hx-get="/library/search" hx-trigger="keyup changed delay:300ms, search"
+                    hx-target="#library-list">
+            </div>
+
+            <div class="card-body p-0 overflow-auto">
+                <div class="list-group list-group-flush" id="library-list">
+                    {% include "partials/library_list.html" %}
                 </div>
             </div>
         </div>
