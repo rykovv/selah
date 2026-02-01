@@ -322,5 +322,31 @@ def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
     return Response(status_code=200, headers={"HX-Redirect": "/editor"})
 
 
+@app.get("/editor/search", response_class=HTMLResponse)
+def search_editor_library(request: Request, q: str = "", db: Session = Depends(get_db)):
+    """
+    Search endpoint specifically for the Editor sidebar.
+    Returns clickable links instead of 'Add to Plan' buttons.
+    """
+    query = db.query(HymnModel).outerjoin(SlideModel)
+    
+    if q:
+        search = f"%{q}%"
+        query = query.filter(
+            or_(
+                HymnModel.number.ilike(search),
+                HymnModel.title.ilike(search),
+                SlideModel.content.ilike(search)
+            )
+        )
+    
+    hymns = query.distinct().order_by(HymnModel.number).all()
+    
+    return templates.TemplateResponse("partials/editor_list.html", {
+        "request": request, 
+        "hymns": hymns
+    })
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10001)

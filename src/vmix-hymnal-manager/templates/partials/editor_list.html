@@ -1,0 +1,12 @@
+{% if hymns %}
+{% for hymn in hymns %}
+<a href="#" class="list-group-item list-group-item-action" hx-get="/hymns/{{ hymn.id }}/form"
+    hx-target="#editor-canvas">
+    <strong>{{ hymn.number }}</strong> {{ hymn.title }}
+</a>
+{% endfor %}
+{% else %}
+<div class="list-group-item text-muted text-center py-3">
+    <small>No matches found.</small>
+</div>
+{% endif %}
