@@ -95,8 +95,7 @@ def get_vmix_feed(db: Session = Depends(get_db)):
         if not hymn: 
             continue
             
-        # Sort slides by their internal order (v1, then v2, then c...)
-        # We manually sort here or enforce it in the query.
+        # 1. Add the Hymn's Slides
         sorted_slides = sorted(hymn.slides, key=lambda x: x.order)
         
         for slide in sorted_slides:
@@ -106,6 +105,14 @@ def get_vmix_feed(db: Session = Depends(get_db)):
                 Label=slide.label,
                 SlideText=slide.content
             ))
+            
+        # 2. Add 'Spacer' ONLY if this is not the last item
+        vmix_output.append(VmixRow(
+            HymnNumber="",         # Blank so it doesn't show garbage
+            Title="",              # Visual cue for the vMix operator
+            Label="",              # Shows 'CLEAR' in the vMix list column
+            SlideText=""           # Empty text forces the Lower Third to clear
+        ))
             
     return vmix_output
 
