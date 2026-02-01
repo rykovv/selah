@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">This Sabbath's Service</h5>
+                <small>Auto-syncs to vMix</small>
+            </div>
+            <div class="card-body">
+                {% if plan %}
+                <ul class="list-group" id="service-list">
+                    {% for item in plan %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary me-2">{{ item.sequence }}</span>
+                            <strong>{{ item.hymn.number }}</strong> - {{ item.hymn.title }}
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" hx-delete="/plan/{{ item.id }}"
+                            hx-target="closest li" hx-swap="outerHTML">
+                            Remove
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="alert alert-info">The service plan is empty. Add hymns from the library.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Hymn Library</h5>
+            </div>
+            <div class="card-body">
+                <input type="text" class="form-control mb-3" placeholder="Search hymns..." disabled>
+
+                <div class="list-group">
+                    {% for hymn in library %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ hymn.number }}</strong> {{ hymn.title }}
+                        </div>
+                        <form action="/plan/add" method="post">
+                            <input type="hidden" name="hymn_id" value="{{ hymn.id }}">
+                            <button type="submit" class="btn btn-sm btn-primary">Add to Service</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

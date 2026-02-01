@@ -1,5 +1,10 @@
 import uvicorn
+
 from fastapi import FastAPI, Depends
+from fastapi import Request, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+
 from pydantic import BaseModel, ConfigDict
 from typing import List
 
@@ -12,6 +17,8 @@ DATABASE_URL = "sqlite:///./hymns.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+templates = Jinja2Templates(directory="src/vmix-hymnal-manager/templates")
 
 def get_db():
     """Dependency injection for database sessions."""
@@ -135,6 +142,46 @@ def seed_database(db: Session = Depends(get_db)):
     
     db.commit()
     return {"status": "Database seeded with 2 hymns and a service plan."}
+
+
+@app.get("/", response_class=HTMLResponse)
+def read_dashboard(request: Request, db: Session = Depends(get_db)):
+    """Render the main dashboard."""
+    # 1. Get the current plan
+    plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
+    # 2. Get the full library (Simple version: fetch all)
+    library = db.query(HymnModel).order_by(HymnModel.number).all()
+    
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "plan": plan,
+        "library": library
+    })
+
+
+@app.post("/plan/add")
+def add_to_plan(hymn_id: int = Form(...), db: Session = Depends(get_db)):
+    """Add a hymn to the end of the service list."""
+    # Find the current highest sequence number
+    last_item = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence.desc()).first()
+    new_seq = (last_item.sequence + 1) if last_item else 1
+    
+    new_entry = ServicePlanModel(sequence=new_seq, hymn_id=hymn_id)
+    db.add(new_entry)
+    db.commit()
+    
+    # Reload the page to show the change
+    return RedirectResponse(url="/", status_code=303)
+
+
+@app.delete("/plan/{item_id}")
+def remove_from_plan(item_id: int, db: Session = Depends(get_db)):
+    """Remove an item. HTMX expects a 200 OK or empty response."""
+    item = db.query(ServicePlanModel).filter(ServicePlanModel.id == item_id).first()
+    if item:
+        db.delete(item)
+        db.commit()
+    return HTMLResponse(content="") # Return empty string to remove element from DOM
 
 
 if __name__ == "__main__":
