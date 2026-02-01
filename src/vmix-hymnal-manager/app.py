@@ -385,5 +385,39 @@ def search_editor_library(request: Request, q: str = "", db: Session = Depends(g
     })
 
 
+@app.get("/hymns/{hymn_id}/preview", response_class=HTMLResponse)
+def preview_hymn(hymn_id: int, db: Session = Depends(get_db)):
+    """Returns the hymn lyrics for the modal preview."""
+    hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
+    if not hymn:
+        return "<div>Hymn not found</div>"
+    
+    hymn.slides.sort(key=lambda x: x.order)
+    
+    # We construct the HTML directly here to avoid creating another file
+    html = f"""
+    <div class="p-2">
+        <h4 class="text-primary mb-3">{hymn.number} - {hymn.title}</h4>
+    """
+    
+    for slide in hymn.slides:
+        # Determine badge color
+        badge_class = "bg-secondary"
+        if "v" in slide.label.lower(): badge_class = "bg-primary"
+        if "c" in slide.label.lower(): badge_class = "bg-success"
+        
+        badge = f'<span class="badge {badge_class} me-2">{slide.label}</span>' if slide.label else ""
+        
+        html += f"""
+        <div class="d-flex mb-3 border-bottom pb-2">
+            <div class="mt-1">{badge}</div>
+            <div class="ms-2 text-dark" style="white-space: pre-wrap; font-size: 1.1rem;">{slide.content}</div>
+        </div>
+        """
+    
+    html += "</div>"
+    return html
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10001)

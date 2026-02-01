@@ -1,17 +1,28 @@
 {% if library %}
 {% for hymn in library %}
 <div class="list-group-item d-flex justify-content-between align-items-center">
-    <div>
+    <div class="text-truncate me-2">
         <strong>{{ hymn.number }}</strong> {{ hymn.title }}
     </div>
-    <form action="/plan/add" method="post">
-        <input type="hidden" name="hymn_id" value="{{ hymn.id }}">
-        <button type="submit" class="btn btn-sm btn-primary">Add to Service</button>
-    </form>
+
+    <div class="btn-group" role="group">
+        <button class="btn btn-outline-secondary btn-sm" title="Preview Lyrics" hx-get="/hymns/{{ hymn.id }}/preview"
+            hx-target="#preview-content" data-bs-toggle="modal" data-bs-target="#previewModal">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z" />
+                <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" />
+            </svg>
+        </button>
+
+        <button class="btn btn-primary btn-sm" hx-post="/plan/add" hx-vals='{"hymn_id": "{{ hymn.id }}"}'
+            hx-target="body">
+            Add to Service
+        </button>
+    </div>
 </div>
 {% endfor %}
 {% else %}
 <div class="list-group-item text-muted text-center py-3">
-    No hymns found matching your search.
+    <small>No matches found.</small>
 </div>
 {% endif %}
