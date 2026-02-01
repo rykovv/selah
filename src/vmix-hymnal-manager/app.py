@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from pydantic import BaseModel, ConfigDict
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text
 from sqlalchemy.orm import sessionmaker, Session, relationship, declarative_base
@@ -182,6 +182,86 @@ def remove_from_plan(item_id: int, db: Session = Depends(get_db)):
         db.delete(item)
         db.commit()
     return HTMLResponse(content="") # Return empty string to remove element from DOM
+
+
+@app.get("/editor", response_class=HTMLResponse)
+def editor_dashboard(request: Request, db: Session = Depends(get_db)):
+    """The main shell for the editor."""
+    hymns = db.query(HymnModel).order_by(HymnModel.number).all()
+    return templates.TemplateResponse("editor.html", {"request": request, "hymns": hymns})
+
+
+@app.get("/hymns/form", response_class=HTMLResponse)
+def get_empty_form(request: Request):
+    """Returns an empty form for creating a new hymn."""
+    return templates.TemplateResponse("partials/hymn_form.html", {"request": request, "hymn": None})
+
+
+@app.get("/hymns/{hymn_id}/form", response_class=HTMLResponse)
+def get_edit_form(hymn_id: int, request: Request, db: Session = Depends(get_db)):
+    """Returns a pre-filled form for an existing hymn."""
+    hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
+    # Sort slides to ensure they appear in order
+    if hymn:
+        hymn.slides.sort(key=lambda x: x.order)
+    
+    return templates.TemplateResponse("partials/hymn_form.html", {"request": request, "hymn": hymn})
+
+
+@app.post("/hymns/save")
+def save_hymn(
+    request: Request,
+    hymn_id: Optional[int] = Form(None), # If None, it's a create action
+    number: str = Form(...),
+    title: str = Form(...),
+    # FastAPI automatically collects multiple fields with same name into a list
+    slide_labels: List[str] = Form(...), 
+    slide_contents: List[str] = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Handles both CREATE and UPDATE."""
+    
+    if hymn_id:
+        # UPDATE existing
+        hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
+
+        hymn.number = number
+        hymn.title = title
+        # Clear old slides and re-add (Simplest strategy for updates)
+        for slide in hymn.slides:
+            db.delete(slide)
+    else:
+        # CREATE new
+        hymn = HymnModel(number=number, title=title)
+        db.add(hymn)
+        db.flush() # Flush to get the new ID
+
+    # Add Slides
+    for index, (label, content) in enumerate(zip(slide_labels, slide_contents)):
+        # Skip empty slides
+        if not content.strip(): 
+            continue
+            
+        new_slide = SlideModel(
+            hymn_id=hymn.id, 
+            label=label, 
+            content=content, 
+            order=index + 1
+        )
+        db.add(new_slide)
+        
+    db.commit()
+    
+    # Redirect back to editor to refresh the list
+    return RedirectResponse(url="/editor", status_code=303)
+
+@app.delete("/hymns/{hymn_id}")
+def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
+    hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
+    if hymn:
+        db.delete(hymn)
+        db.commit()
+    return HTMLResponse("") # Return empty to remove row from UI
 
 
 if __name__ == "__main__":

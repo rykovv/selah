@@ -1,0 +1,100 @@
+<div class="w-100 h-100 d-flex flex-column">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>{{ 'Edit Hymn' if hymn else 'New Hymn' }}</h3>
+
+        {% if hymn %}
+        <button class="btn btn-outline-danger btn-sm" hx-delete="/hymns/{{ hymn.id }}"
+            hx-confirm="Are you sure? This will remove it from all service plans." onclick="window.location.reload()">
+            Delete Hymn
+        </button>
+        {% endif %}
+    </div>
+
+    <form action="/hymns/save" method="post" class="flex-grow-1 d-flex flex-column">
+        {% if hymn %}
+        <input type="hidden" name="hymn_id" value="{{ hymn.id }}">
+        {% endif %}
+
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label class="form-label">Number</label>
+                <input type="text" name="number" class="form-control" value="{{ hymn.number if hymn else '' }}"
+                    required>
+            </div>
+            <div class="col-md-9">
+                <label class="form-label">Title</label>
+                <input type="text" name="title" class="form-control" value="{{ hymn.title if hymn else '' }}" required>
+            </div>
+        </div>
+
+        <hr>
+        <h6>Slides / Stanzas</h6>
+
+        <div id="slides-container" class="overflow-auto mb-3 flex-grow-1"
+            style="max-height: 50vh; border: 1px solid #dee2e6; padding: 10px; border-radius: 5px;">
+
+            {% if hymn %}
+            {% for slide in hymn.slides %}
+            <div class="slide-row row mb-2">
+                <div class="col-2">
+                    <input type="text" name="slide_labels" class="form-control form-control-sm" placeholder="Label (v1)"
+                        value="{{ slide.label }}">
+                </div>
+                <div class="col-9">
+                    <textarea name="slide_contents" class="form-control form-control-sm" rows="2"
+                        placeholder="Lyrics...">{{ slide.content }}</textarea>
+                </div>
+                <div class="col-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                        onclick="this.closest('.slide-row').remove()">X</button>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="slide-row row mb-2">
+                <div class="col-2">
+                    <input type="text" name="slide_labels" class="form-control form-control-sm"
+                        placeholder="Label (v1)">
+                </div>
+                <div class="col-9">
+                    <textarea name="slide_contents" class="form-control form-control-sm" rows="2"
+                        placeholder="Lyrics..."></textarea>
+                </div>
+                <div class="col-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                        onclick="this.closest('.slide-row').remove()">X</button>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addSlide()">+ Add Slide</button>
+            <button type="submit" class="btn btn-success">Save Hymn</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Simple JS to append a new row
+    function addSlide() {
+        const container = document.getElementById('slides-container');
+        const newRow = document.createElement('div');
+        newRow.className = 'slide-row row mb-2';
+        newRow.innerHTML = `
+            <div class="col-2">
+                <input type="text" name="slide_labels" class="form-control form-control-sm" placeholder="Label">
+            </div>
+            <div class="col-9">
+                <textarea name="slide_contents" class="form-control form-control-sm" rows="2" placeholder="Lyrics..."></textarea>
+            </div>
+            <div class="col-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.slide-row').remove()">X</button>
+            </div>
+        `;
+        container.appendChild(newRow);
+        // Auto-scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    }
+</script>

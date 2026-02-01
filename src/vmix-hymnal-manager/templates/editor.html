@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row" style="height: 80vh;">
+
+    <div class="col-md-4 h-100 d-flex flex-column">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Library</h5>
+                <button class="btn btn-sm btn-light text-primary" hx-get="/hymns/form" hx-target="#editor-canvas">
+                    + New Hymn
+                </button>
+            </div>
+            <div class="card-body p-0 overflow-auto">
+                <div class="list-group list-group-flush">
+                    {% for hymn in hymns %}
+                    <a href="#" class="list-group-item list-group-item-action" hx-get="/hymns/{{ hymn.id }}/form"
+                        hx-target="#editor-canvas">
+                        <strong>{{ hymn.number }}</strong> {{ hymn.title }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8 h-100">
+        <div id="editor-canvas"
+            class="card shadow-sm h-100 p-4 d-flex justify-content-center align-items-center text-muted">
+            <div class="text-center">
+                <h4>Select a hymn to edit</h4>
+                <p>or click "+ New Hymn" to create one.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
