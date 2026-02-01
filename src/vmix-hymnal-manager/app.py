@@ -1,3 +1,6 @@
+import sys
+import os
+
 import uvicorn
 
 from fastapi import FastAPI, Depends
@@ -19,7 +22,25 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-templates = Jinja2Templates(directory="src/vmix-hymnal-manager/templates")
+if getattr(sys, 'frozen', False):
+    # Running as compiled .exe
+    base_dir = os.path.dirname(sys.executable)
+    
+    # Check for PyInstaller v6+ structure (_internal folder)
+    internal_templates = os.path.join(base_dir, "_internal", "templates")
+    root_templates = os.path.join(base_dir, "templates")
+    
+    if os.path.exists(internal_templates):
+        template_dir = internal_templates
+    else:
+        template_dir = root_templates
+else:
+    # Running as script (Dev mode)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    template_dir = os.path.join(base_dir, "templates")
+
+# Initialize Jinja2 with the correct dynamic path
+templates = Jinja2Templates(directory=template_dir)
 
 def get_db():
     """Dependency injection for database sessions."""
