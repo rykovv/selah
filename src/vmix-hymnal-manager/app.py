@@ -1,7 +1,7 @@
 import uvicorn
 
 from fastapi import FastAPI, Depends
-from fastapi import Request, Form
+from fastapi import Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -302,6 +302,24 @@ def search_library(request: Request, q: str = "", db: Session = Depends(get_db))
         "request": request, 
         "library": hymns
     })
+
+
+@app.delete("/hymns/{hymn_id}")
+def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
+    # 1. Manual Cascade: Remove this hymn from any Service Plans first
+    # This prevents the "Foreign Key Constraint" error
+    db.query(ServicePlanModel).filter(ServicePlanModel.hymn_id == hymn_id).delete()
+    
+    # 2. Find and delete the hymn
+    hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
+    if hymn:
+        db.delete(hymn)
+        db.commit()
+        
+    # 3. HTMX Redirect
+    # Instead of returning HTML, we send a header that tells the browser 
+    # to load the /editor page. This prevents the "Race Condition".
+    return Response(status_code=200, headers={"HX-Redirect": "/editor"})
 
 
 if __name__ == "__main__":

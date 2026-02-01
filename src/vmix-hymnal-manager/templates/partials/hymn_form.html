@@ -4,7 +4,7 @@
 
         {% if hymn %}
         <button class="btn btn-outline-danger btn-sm" hx-delete="/hymns/{{ hymn.id }}"
-            hx-confirm="Are you sure? This will remove it from all service plans." onclick="window.location.reload()">
+            hx-confirm="Are you sure? This will remove it from all service plans." hx-swap="none">
             Delete Hymn
         </button>
         {% endif %}
