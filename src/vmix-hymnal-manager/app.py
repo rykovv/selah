@@ -15,6 +15,13 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text
 from sqlalchemy.orm import sessionmaker, Session, relationship, declarative_base
 from sqlalchemy import or_
 
+from fastapi.responses import StreamingResponse # Add this to imports
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.dml.color import RGBColor
+from io import BytesIO
+
 
 DATABASE_URL = "sqlite:///./hymns.db"
 
@@ -417,6 +424,136 @@ def preview_hymn(hymn_id: int, db: Session = Depends(get_db)):
     
     html += "</div>"
     return html
+
+
+@app.get("/download/ppt")
+def download_ppt(db: Session = Depends(get_db)):
+    """Generates a Service PowerPoint."""
+    
+    # 1. Fetch the Plan
+    plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
+    if not plan:
+        return Response("Service plan is empty", status_code=400)
+
+    # 2. Initialize Presentation (16:9 Widescreen)
+    prs = Presentation()
+    prs.slide_width = Inches(16)
+    prs.slide_height = Inches(9)
+
+    # --- STYLE CONSTANTS ---
+    BG_COLOR = RGBColor(0, 0, 0)       # Black
+    TEXT_COLOR = RGBColor(255, 255, 255) # White
+    ACCENT_COLOR = RGBColor(100, 100, 100) # Grey for labels (v1, c)
+    FONT_NAME = "Arial"                # Clean, universal sans-serif
+    TITLE_SIZE = Pt(80)
+    NUMBER_SIZE = Pt(54)
+    LYRICS_SIZE = Pt(60)               # Large, readable from back of room
+    LABEL_SIZE = Pt(40)                # Small label in corner
+
+    def create_black_slide(prs):
+        """Helper to create a blank slide with black background."""
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = BG_COLOR
+        return slide
+
+    def add_text_box(slide, text, size, top_inch, height_inch, is_bold=False, color=TEXT_COLOR):
+        """
+        Helper to center text on the slide.
+        Now accepts 'top_inch' and 'height_inch' to control vertical placement.
+        """
+        # CLEANING
+        if text:
+            text = text.replace('\r\n', '\n').replace('\r', '\n').replace('\x0b', '\n')
+        
+        # Left margin 1 inch, Width 14 inches (Centered horizontally)
+        left = Inches(1)
+        width = Inches(14)
+        
+        txBox = slide.shapes.add_textbox(left, top_inch, width, height_inch)
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        
+        p = tf.paragraphs[0]
+        p.text = text
+        p.font.name = FONT_NAME
+        p.font.size = size
+        p.font.bold = is_bold
+        p.font.color.rgb = color
+        p.alignment = PP_ALIGN.CENTER
+
+    # --- GENERATION LOOP ---
+    for index, item in enumerate(plan):
+        hymn = item.hymn
+        if not hymn: continue
+
+        # A. HYMN TITLE SLIDE
+        slide = create_black_slide(prs)
+        
+        # 1. Hymn Number (Top Half)
+        # Position: 2.5 inches from top
+        add_text_box(slide, f"Hymn №{hymn.number}", NUMBER_SIZE, Inches(2.5), Inches(1.5), is_bold=False)
+
+        # 2. Hymn Title (Bottom Half)
+        # Position: 4.0 inches from top (Right below number)
+        add_text_box(slide, hymn.title, TITLE_SIZE, Inches(4.0), Inches(4.0), is_bold=True)
+
+        # B. LYRICS SLIDES
+        sorted_slides = sorted(hymn.slides, key=lambda x: x.order)
+
+        for lyric_slide in sorted_slides:
+            slide = create_black_slide(prs)
+            
+            # Main Lyrics (Vertically Centered in a full-height box)
+            # We use Top=1, Height=7 for maximum space
+            txBox = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(14), Inches(7))
+            tf = txBox.text_frame
+            tf.word_wrap = True
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE # Center vertically
+            
+            p = tf.paragraphs[0]
+            # Clean text here too
+            clean_text = lyric_slide.content
+            if clean_text:
+                clean_text = clean_text.replace('\r\n', '\n').replace('\r', '\n').replace('\x0b', '\n')
+
+            p.text = clean_text
+            p.font.name = FONT_NAME
+            p.font.size = LYRICS_SIZE
+            p.font.color.rgb = TEXT_COLOR
+            p.alignment = PP_ALIGN.CENTER
+
+            # Corner Label (Bottom Right)
+            if lyric_slide.label:
+                # Top: 0.5 inch, Height: 1 inch
+                txLabel = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(14), Inches(2))
+                pLabel = txLabel.text_frame.paragraphs[0]
+                pLabel.text = lyric_slide.label.upper() # UPPERCASE looks better for headers
+                pLabel.font.name = FONT_NAME
+                pLabel.font.size = LABEL_SIZE
+                pLabel.font.color.rgb = ACCENT_COLOR 
+                pLabel.font.bold = True
+                pLabel.alignment = PP_ALIGN.CENTER
+        
+        # C. SPACER SLIDE
+        if index < len(plan) - 1:
+            create_black_slide(prs)
+
+    # 3. Save to Memory Buffer
+    output = BytesIO()
+    prs.save(output)
+    output.seek(0)
+
+    # 4. Return as Download
+    filename = "Sabbath_Service_Hymns.pptx"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(
+        output, 
+        headers=headers, 
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
 
 
 if __name__ == "__main__":
