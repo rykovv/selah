@@ -67,16 +67,20 @@ class HymnModel(Base):
     
     # Relationship: One Hymn -> Many Slides
     slides = relationship("SlideModel", back_populates="hymn", cascade="all, delete-orphan")
-
+    service_plans = relationship("ServicePlanModel", back_populates="hymn")
 
 class SlideModel(Base):
     __tablename__ = "slides"
-    
     id = Column(Integer, primary_key=True, index=True)
     hymn_id = Column(Integer, ForeignKey("hymns.id"))
-    label = Column(String)  # v1, c, etc.
-    content = Column(Text)  # The multiline text
-    order = Column(Integer) # To keep slides in correct sequence (1, 2, 3...)
+    
+    label = Column(String)  # e.g., "Verse 1", "Chorus"
+    content = Column(Text)
+    order = Column(Integer)
+    
+    # NEW COLUMN: 'VMIX' or 'PPT'
+    # We default to 'VMIX' so existing data still works
+    type = Column(String, default="VMIX") 
 
     hymn = relationship("HymnModel", back_populates="slides")
 
@@ -89,7 +93,7 @@ class ServicePlanModel(Base):
     hymn_id = Column(Integer, ForeignKey("hymns.id"))
     
     # We fetch the hymn details when we load the plan
-    hymn = relationship("HymnModel")
+    hymn = relationship("HymnModel", back_populates="service_plans")
 
 # --- 3. The vMix Transformation Logic ---
 
@@ -125,7 +129,14 @@ def get_vmix_feed(db: Session = Depends(get_db)):
             continue
             
         # 1. Add the Hymn's Slides
-        sorted_slides = sorted(hymn.slides, key=lambda x: x.order)
+        # Filter for PPT slides specifically
+        vmix_slides_db = [s for s in hymn.slides if s.type == "VMIX"]
+        
+        # Fallback: If no VMIX slides exist, use PPT slides
+        if not vmix_slides_db:
+             vmix_slides_db = [s for s in hymn.slides if s.type == "PPT" or s.type is None]
+
+        sorted_slides = sorted(vmix_slides_db, key=lambda x: x.order)
         
         for slide in sorted_slides:
             vmix_output.append(VmixRow(
@@ -246,46 +257,49 @@ def get_edit_form(hymn_id: int, request: Request, db: Session = Depends(get_db))
 
 @app.post("/hymns/save")
 def save_hymn(
-    request: Request,
-    hymn_id: Optional[int] = Form(None), # If None, it's a create action
+    hymn_id: int = Form(None),
     number: str = Form(...),
     title: str = Form(...),
-    # FastAPI automatically collects multiple fields with same name into a list
-    slide_labels: List[str] = Form(...), 
-    slide_contents: List[str] = Form(...),
+    # vMix Data
+    vmix_labels: list[str] = Form(default=[]),
+    vmix_contents: list[str] = Form(default=[]),
+    # PPT Data
+    ppt_labels: list[str] = Form(default=[]),
+    ppt_contents: list[str] = Form(default=[]),
     db: Session = Depends(get_db)
 ):
-    """Handles both CREATE and UPDATE."""
-    
     if hymn_id:
-        # UPDATE existing
         hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
-
         hymn.number = number
         hymn.title = title
-        # Clear old slides and re-add (Simplest strategy for updates)
-        for slide in hymn.slides:
-            db.delete(slide)
+        # Clear old slides to replace with new ones
+        db.query(SlideModel).filter(SlideModel.hymn_id == hymn_id).delete()
     else:
-        # CREATE new
         hymn = HymnModel(number=number, title=title)
         db.add(hymn)
-        db.flush() # Flush to get the new ID
+        db.commit() # Commit to get ID
+        db.refresh(hymn)
 
-    # Add Slides
-    for index, (label, content) in enumerate(zip(slide_labels, slide_contents)):
-        # Skip empty slides
-        if not content.strip(): 
-            continue
-            
-        new_slide = SlideModel(
+    # 1. Save vMix Slides
+    for i, (lbl, content) in enumerate(zip(vmix_labels, vmix_contents)):
+        db.add(SlideModel(
             hymn_id=hymn.id, 
-            label=label, 
+            label=lbl, 
             content=content, 
-            order=index + 1
-        )
-        db.add(new_slide)
-        
+            order=i,
+            type="VMIX"
+        ))
+
+    # 2. Save PPT Slides
+    for i, (lbl, content) in enumerate(zip(ppt_labels, ppt_contents)):
+        db.add(SlideModel(
+            hymn_id=hymn.id, 
+            label=lbl, 
+            content=content, 
+            order=i,
+            type="PPT"
+        ))
+
     db.commit()
     
     # Redirect back to editor to refresh the list
@@ -501,7 +515,14 @@ def download_ppt(db: Session = Depends(get_db)):
         add_text_box(slide, hymn.title, TITLE_SIZE, Inches(4.0), Inches(4.0), is_bold=True)
 
         # B. LYRICS SLIDES
-        sorted_slides = sorted(hymn.slides, key=lambda x: x.order)
+        # Filter for PPT slides specifically
+        ppt_slides_db = [s for s in hymn.slides if s.type == "PPT"]
+        
+        # Fallback: If no PPT slides exist (legacy data), use vMix slides
+        if not ppt_slides_db:
+             ppt_slides_db = [s for s in hymn.slides if s.type == "VMIX" or s.type is None]
+
+        sorted_slides = sorted(ppt_slides_db, key=lambda x: x.order)
 
         for lyric_slide in sorted_slides:
             slide = create_black_slide(prs)

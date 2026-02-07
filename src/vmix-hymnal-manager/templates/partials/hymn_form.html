@@ -1,165 +1,161 @@
 <div class="d-flex flex-column h-100">
 
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0 pt-1">
-
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0 pt-1">
         <h4 class="m-0 text-primary d-flex align-items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-                <path
-                    d="M8.5 2.687c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z" />
-            </svg>
             {{ 'Edit Hymn' if hymn else 'New Hymn' }}
         </h4>
-
         {% if hymn %}
-        <button class="btn btn-outline-danger border-0 btn-sm d-flex align-items-center gap-2" title="Delete this Hymn"
-            hx-delete="/hymns/{{ hymn.id }}" hx-confirm="Are you sure you want to delete '{{ hymn.title }}'?"
-            hx-target="#editor-canvas"> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                fill="currentColor" viewBox="0 0 16 16">
-                <path
-                    d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
-                <path fill-rule="evenodd"
-                    d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
-            </svg>
-            <span class="d-none d-sm-inline">Delete</span>
+        <button class="btn btn-outline-danger border-0 btn-sm" hx-delete="/hymns/{{ hymn.id }}" hx-confirm="Delete?"
+            hx-target="#editor-canvas">
+            Delete
         </button>
         {% endif %}
     </div>
 
     <form action="/hymns/save" method="post" class="d-flex flex-column flex-grow-1" style="min-height: 0;"
         onsubmit="prepareSubmission()">
+        {% if hymn %}<input type="hidden" name="hymn_id" value="{{ hymn.id }}">{% endif %}
 
-        {% if hymn %}
-        <input type="hidden" name="hymn_id" value="{{ hymn.id }}">
-        {% endif %}
-
-        <div class="row g-2 mb-3 flex-shrink-0">
+        <div class="row g-2 mb-2 flex-shrink-0">
             <div class="col-md-3">
                 <div class="form-floating">
                     <input type="text" name="number" class="form-control" id="hymnNumber" placeholder="101"
                         value="{{ hymn.number if hymn else '' }}" required>
-                    <label for="hymnNumber">Number</label>
+                    <label>Number</label>
                 </div>
             </div>
             <div class="col-md-9">
                 <div class="form-floating">
                     <input type="text" name="title" class="form-control" id="hymnTitle" placeholder="Title"
                         value="{{ hymn.title if hymn else '' }}" required>
-                    <label for="hymnTitle">Title</label>
+                    <label>Title</label>
                 </div>
             </div>
         </div>
 
-        <div class="row g-0 flex-grow-1 border rounded overflow-hidden" style="min-height: 0;">
+        <ul class="nav nav-tabs flex-shrink-0" id="editorTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="vmix-tab" data-bs-toggle="tab" data-bs-target="#vmix-pane"
+                    type="button" role="tab">vMix (Live)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="ppt-tab" data-bs-toggle="tab" data-bs-target="#ppt-pane" type="button"
+                    role="tab">PowerPoint</button>
+            </li>
+        </ul>
 
-            <div class="col-md-6 d-flex flex-column border-end bg-light h-100">
-                <div class="p-2 bg-secondary text-white small fw-bold d-flex justify-content-between flex-shrink-0">
-                    <span>SOURCE TEXT</span>
-                    <span style="opacity: 0.8;">Syntax: [Label] Lyrics</span>
+        <div class="tab-content flex-grow-1 border border-top-0 rounded-bottom overflow-hidden" style="min-height: 0;">
+
+            <div class="tab-pane fade show active h-100" id="vmix-pane" role="tabpanel">
+                <div class="d-flex flex-column h-100">
+                    <div class="row g-0 h-100 overflow-hidden">
+                        <div class="col-md-6 d-flex flex-column border-end bg-light h-100">
+                            <div class="p-2 bg-secondary text-white small fw-bold">SOURCE (vMix)</div>
+                            <textarea id="vmix-editor"
+                                class="form-control border-0 flex-grow-1 p-3 overflow-auto font-monospace"
+                                style="resize: none;"
+                                oninput="renderPreview('vmix')">{% if hymn %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}</textarea>
+                        </div>
+                        <div class="col-md-6 d-flex flex-column bg-white h-100">
+                            <div class="p-2 bg-dark text-white small fw-bold">PREVIEW (vMix)</div>
+                            <div id="vmix-preview" class="flex-grow-1 p-3 overflow-auto bg-light"></div>
+                        </div>
+                    </div>
                 </div>
-
-                <textarea id="master-editor" class="form-control border-0 flex-grow-1 p-3 overflow-auto"
-                    style="resize: none; font-family: monospace; line-height: 1.5; border-radius: 0;"
-                    placeholder="[Verse 1]&#10;Amazing grace how sweet the sound&#10;That saved a wretch like me&#10;&#10;[Chorus]&#10;My chains are gone&#10;I've been set free"
-                    oninput="renderPreview()"
-                    spellcheck="false">{% if hymn %}{% for slide in hymn.slides %}{% if slide.label %}[{{ slide.label }}]&#10;{% endif %}{{ slide.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}</textarea>
             </div>
 
-            <div class="col-md-6 d-flex flex-column bg-white h-100">
-                <div class="p-2 bg-dark text-white small fw-bold flex-shrink-0">
-                    <span>SLIDES PREVIEW</span>
-                </div>
-                <div id="preview-container" class="flex-grow-1 p-3 overflow-auto" style="background-color: #f8f9fa;">
+            <div class="tab-pane fade h-100" id="ppt-pane" role="tabpanel">
+                <div class="d-flex flex-column h-100">
+                    <div class="row g-0 h-100 overflow-hidden">
+                        <div class="col-md-6 d-flex flex-column border-end bg-light h-100">
+                            <div class="p-2 bg-info text-dark small fw-bold">SOURCE (PPT)</div>
+                            <textarea id="ppt-editor"
+                                class="form-control border-0 flex-grow-1 p-3 overflow-auto font-monospace"
+                                style="resize: none;"
+                                oninput="renderPreview('ppt')">{% if hymn %}{% set ppt_slides = hymn.slides|selectattr('type', 'equalto', 'PPT')|list %}{% if ppt_slides %}{% for s in ppt_slides %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% else %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}{% endif %}</textarea>
+                        </div>
+                        <div class="col-md-6 d-flex flex-column bg-white h-100">
+                            <div class="p-2 bg-dark text-white small fw-bold">PREVIEW (PPT)</div>
+                            <div id="ppt-preview" class="flex-grow-1 p-3 overflow-auto bg-light"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div id="submission-container" class="d-none"></div>
 
-        <div class="mt-3 text-end flex-shrink-0">
-            <button type="submit" class="btn btn-success px-4">Save Hymn</button>
+        <div class="mt-2 text-end flex-shrink-0">
+            <button type="submit" class="btn btn-success px-4">Save All</button>
         </div>
     </form>
 </div>
 
 <script>
-    function parseBlocks() {
-        const rawText = document.getElementById('master-editor').value;
-        const blocks = rawText.split(/\n\s*\n/);
-
-        return blocks.map(block => {
+    function parseText(text) {
+        return text.split(/\n\s*\n/).map(block => {
             block = block.trim();
             if (!block) return null;
-
-            let label = "";
-            let content = block;
-
             const match = block.match(/^\[(.*?)\]\s*([\s\S]*)/);
-            if (match) {
-                label = match[1];
-                content = match[2];
-            }
-
-            return { label, content };
-        }).filter(item => item !== null);
+            return match ? { label: match[1], content: match[2] } : { label: "", content: block };
+        }).filter(x => x !== null);
     }
 
-    function renderPreview() {
-        const slides = parseBlocks();
-        const container = document.getElementById('preview-container');
+    function renderPreview(type) {
+        const editorId = type === 'vmix' ? 'vmix-editor' : 'ppt-editor';
+        const containerId = type === 'vmix' ? 'vmix-preview' : 'ppt-preview';
+
+        const slides = parseText(document.getElementById(editorId).value);
+        const container = document.getElementById(containerId);
         container.innerHTML = '';
 
         if (slides.length === 0) {
-            container.innerHTML = '<div class="text-muted text-center mt-5">Type on the left...<br><small>Format: [Verse 1] Lyrics</small></div>';
+            container.innerHTML = '<div class="text-muted text-center mt-5">No content...</div>';
             return;
         }
 
         slides.forEach((slide, index) => {
             const card = document.createElement('div');
-            card.className = 'card mb-3 shadow-sm border-0';
+            card.className = 'card mb-2 shadow-sm border-0';
 
             let badgeClass = 'bg-secondary';
-            const lowerLabel = slide.label.toLowerCase();
+            if (slide.label.toLowerCase().includes('v')) badgeClass = 'bg-primary';
+            if (slide.label.toLowerCase().includes('c')) badgeClass = 'bg-success';
 
-            if (lowerLabel.includes('v') || lowerLabel.includes('verse')) badgeClass = 'bg-primary';
-            else if (lowerLabel.includes('c') || lowerLabel.includes('chorus')) badgeClass = 'bg-success';
-            else if (lowerLabel.includes('b') || lowerLabel.includes('bridge')) badgeClass = 'bg-warning text-dark';
-
-            const labelBadge = slide.label
-                ? `<span class="badge ${badgeClass} mb-2">${slide.label}</span>`
-                : `<span class="badge bg-light text-muted border mb-2">slide</span>`;
+            const badge = slide.label ? `<span class="badge ${badgeClass} mb-2">${slide.label}</span>` : '';
 
             card.innerHTML = `
-                <div class="card-body p-3">
+                <div class="card-body p-2">
                     <div class="d-flex justify-content-between align-items-start">
-                        ${labelBadge}
-                        <small class="text-muted">Slide ${index + 1}</small>
+                        ${badge} <small class="text-muted">Slide ${index + 1}</small>
                     </div>
-                    <div class="text-dark" style="font-size: 1.1rem; white-space: pre-wrap; line-height: 1.4;">${slide.content}</div>
-                </div>
-            `;
+                    <div class="text-dark" style="white-space: pre-wrap;">${slide.content}</div>
+                </div>`;
             container.appendChild(card);
         });
     }
 
     function prepareSubmission() {
-        const slides = parseBlocks();
         const container = document.getElementById('submission-container');
         container.innerHTML = '';
 
-        slides.forEach(slide => {
-            const inputLabel = document.createElement('input');
-            inputLabel.type = 'hidden';
-            inputLabel.name = 'slide_labels';
-            inputLabel.value = slide.label;
-            container.appendChild(inputLabel);
+        const addInput = (name, val) => {
+            const i = document.createElement('input');
+            i.type = 'hidden'; i.name = name; i.value = val;
+            container.appendChild(i);
+        };
 
-            const inputContent = document.createElement('input');
-            inputContent.type = 'hidden';
-            inputContent.name = 'slide_contents';
-            inputContent.value = slide.content;
-            container.appendChild(inputContent);
+        parseText(document.getElementById('vmix-editor').value).forEach(s => {
+            addInput('vmix_labels', s.label);
+            addInput('vmix_contents', s.content);
+        });
+
+        parseText(document.getElementById('ppt-editor').value).forEach(s => {
+            addInput('ppt_labels', s.label);
+            addInput('ppt_contents', s.content);
         });
     }
 
-    renderPreview();
+    renderPreview('vmix');
+    renderPreview('ppt');
 </script>
