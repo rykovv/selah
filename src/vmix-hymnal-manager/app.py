@@ -2,6 +2,8 @@ import sys
 import os
 import shutil
 
+from datetime import datetime, timezone
+
 import uvicorn
 
 from fastapi import FastAPI, Depends
@@ -13,7 +15,7 @@ from fastapi import UploadFile, File
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker, Session, relationship, declarative_base
 from sqlalchemy import or_
 
@@ -105,9 +107,9 @@ class ProgramModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String) 
     is_active = Column(Boolean, default=False)
-    
     template_id = Column(Integer, ForeignKey("presentation_templates.id"), nullable=True)
-    
+    last_used = Column(DateTime, default=datetime.now(timezone.utc))
+
     template = relationship("PresentationTemplateModel")
     items = relationship("ProgramItemModel", back_populates="program", cascade="all, delete-orphan")
 
@@ -690,7 +692,10 @@ def download_ppt(
 
 @app.get("/programs", response_class=HTMLResponse)
 def page_programs(request: Request, db: Session = Depends(get_db)):
-    programs = db.query(ProgramModel).order_by(ProgramModel.id.desc()).all()
+    programs = db.query(ProgramModel).order_by(
+        ProgramModel.last_used.desc(), 
+        ProgramModel.id.desc()
+    ).all()
     return templates.TemplateResponse("programs.html", {"request": request, "programs": programs})
 
 
@@ -698,7 +703,7 @@ def page_programs(request: Request, db: Session = Depends(get_db)):
 def new_program(db: Session = Depends(get_db)):
     # Create blank program with default name
     # We removed the date logic here
-    new_prog = ProgramModel(name="New Service Program", is_active=False)
+    new_prog = ProgramModel(name="New Service Program", is_active=False, last_used=datetime.now(timezone.utc))
     
     db.add(new_prog)
     db.commit()
@@ -906,6 +911,7 @@ def activate_program(id: int, request: Request, db: Session = Depends(get_db)):
     prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
     if prog:
         prog.is_active = True
+        prog.last_used = datetime.now(timezone.utc)
         db.commit()
     
     # 3. Return ONLY the list partial (not the whole page)
