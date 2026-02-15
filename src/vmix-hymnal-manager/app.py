@@ -18,7 +18,8 @@ from sqlalchemy import or_
 from fastapi.responses import StreamingResponse # Add this to imports
 from pptx import Presentation
 from pptx.util import Inches, Pt
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
 from pptx.dml.color import RGBColor
 from io import BytesIO
 
@@ -481,138 +482,149 @@ def preview_hymn(hymn_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/download/ppt")
-def download_ppt(db: Session = Depends(get_db)):
-    """Generates a Service PowerPoint."""
+def download_ppt(
+    aspect: str = "4:3",
+    font_select: str = "Arial", # Renamed from 'font'
+    font_manual: str = "",      # New parameter
+    title_size: int = 80,
+    lyrics_size: int = 60,
+    db: Session = Depends(get_db)
+):
+    """Generates a Service PowerPoint with Manual Font Support."""
     
-    # 1. Fetch the Plan
     plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
     if not plan:
         return Response("Service plan is empty", status_code=400)
 
-    # 2. Initialize Presentation (16:9 Widescreen)
     prs = Presentation()
-    prs.slide_width = Inches(16)
-    prs.slide_height = Inches(9)
+    
+    # 1. Geometry Setup
+    if aspect == "4:3":
+        prs.slide_width = Inches(10)
+        prs.slide_height = Inches(7.5)
+        SLIDE_W = Inches(10)
+        SLIDE_H = Inches(7.5)
+    else:
+        prs.slide_width = Inches(16)
+        prs.slide_height = Inches(9)
+        SLIDE_W = Inches(16)
+        SLIDE_H = Inches(9)
 
-    # --- STYLE CONSTANTS ---
-    BG_COLOR = RGBColor(0, 0, 0)       # Black
-    TEXT_COLOR = RGBColor(255, 255, 255) # White
-    ACCENT_COLOR = RGBColor(100, 100, 100) # Grey for labels (v1, c)
-    FONT_NAME = "Arial"                # Clean, universal sans-serif
-    TITLE_SIZE = Pt(80)
-    NUMBER_SIZE = Pt(54)
-    LYRICS_SIZE = Pt(60)               # Large, readable from back of room
-    LABEL_SIZE = Pt(40)                # Small label in corner
+    MARGIN = Inches(0.5)
+    SAFE_WIDTH = SLIDE_W - (MARGIN * 2)
+    SAFE_HEIGHT = SLIDE_H - (MARGIN * 2)
 
+    # --- FONT LOGIC ---
+    # Determine the actual font name to use
+    if font_select == "Manual" and font_manual.strip():
+        FONT_NAME = font_manual.strip()
+    else:
+        FONT_NAME = font_select
+
+    BG_COLOR = RGBColor(0, 0, 0)
+    TEXT_COLOR = RGBColor(255, 255, 255)
+    
+    TITLE_SIZE = Pt(title_size)      
+    NUMBER_SIZE = Pt(int(title_size * 0.5)) 
+    LYRICS_SIZE = Pt(lyrics_size) 
+
+    # --- HELPERS ---
     def create_black_slide(prs):
-        """Helper to create a blank slide with black background."""
-        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        slide = prs.slides.add_slide(prs.slide_layouts[6]) 
         background = slide.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = BG_COLOR
         return slide
 
-    def add_text_box(slide, text, size, top_inch, height_inch, is_bold=False, color=TEXT_COLOR):
-        """
-        Helper to center text on the slide.
-        Now accepts 'top_inch' and 'height_inch' to control vertical placement.
-        """
-        # CLEANING
-        if text:
-            text = text.replace('\r\n', '\n').replace('\r', '\n').replace('\x0b', '\n')
+    def clean_text(text):
+        if not text: return ""
+        return text.replace('\r\n', '\n').replace('\r', '\n').replace('\x0b', '\n').strip()
+
+    def get_text_frame(slide):
+        shape = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, 
+            MARGIN, MARGIN, SAFE_WIDTH, SAFE_HEIGHT
+        )
+        shape.fill.background() 
+        shape.line.fill.background() 
         
-        # Left margin 1 inch, Width 14 inches (Centered horizontally)
-        left = Inches(1)
-        width = Inches(14)
-        
-        txBox = slide.shapes.add_textbox(left, top_inch, width, height_inch)
-        tf = txBox.text_frame
-        tf.word_wrap = True
-        
-        p = tf.paragraphs[0]
-        p.text = text
-        p.font.name = FONT_NAME
-        p.font.size = size
-        p.font.bold = is_bold
-        p.font.color.rgb = color
-        p.alignment = PP_ALIGN.CENTER
+        tf = shape.text_frame
+        tf.word_wrap = True 
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE 
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE 
+        return tf
 
     # --- GENERATION LOOP ---
     for index, item in enumerate(plan):
         hymn = item.hymn
         if not hymn: continue
 
-        # A. HYMN TITLE SLIDE
+        # A. TITLE SLIDE
         slide = create_black_slide(prs)
+        tf = get_text_frame(slide)
         
-        # 1. Hymn Number (Top Half)
-        # Position: 2.5 inches from top
-        add_text_box(slide, f"Hymn №{hymn.number}", NUMBER_SIZE, Inches(2.5), Inches(1.5), is_bold=False)
-
-        # 2. Hymn Title (Bottom Half)
-        # Position: 4.0 inches from top (Right below number)
-        add_text_box(slide, hymn.title, TITLE_SIZE, Inches(4.0), Inches(4.0), is_bold=True)
+        # Paragraph 1: Hymn Number
+        p1 = tf.paragraphs[0]
+        p1.text = f"Hymn #{hymn.number}"
+        p1.font.name = FONT_NAME
+        p1.font.size = NUMBER_SIZE
+        p1.font.bold = False
+        p1.font.color.rgb = TEXT_COLOR
+        p1.alignment = PP_ALIGN.CENTER
+        
+        # Paragraph 2: Title
+        p2 = tf.add_paragraph()
+        p2.text = hymn.title
+        p2.font.name = FONT_NAME
+        p2.font.size = TITLE_SIZE
+        p2.font.bold = True
+        p2.font.color.rgb = TEXT_COLOR
+        p2.alignment = PP_ALIGN.CENTER
 
         # B. LYRICS SLIDES
-        # Filter for PPT slides specifically
-        ppt_slides_db = [s for s in hymn.slides if s.type == "PPT"]
+        slides_source = [s for s in hymn.slides if s.type == "PPT"]
+        if not slides_source:
+            slides_source = [s for s in hymn.slides if s.type == "VMIX" or s.type is None]
         
-        # Fallback: If no PPT slides exist (legacy data), use vMix slides
-        if not ppt_slides_db:
-             ppt_slides_db = [s for s in hymn.slides if s.type == "VMIX" or s.type is None]
-
-        sorted_slides = sorted(ppt_slides_db, key=lambda x: x.order)
-
-        for lyric_slide in sorted_slides:
-            slide = create_black_slide(prs)
+        grouped_slides = []
+        current_group = None
+        
+        for s in sorted(slides_source, key=lambda x: x.order):
+            content = clean_text(s.content)
+            label = s.label
             
-            # Main Lyrics (Vertically Centered in a full-height box)
-            # We use Top=1, Height=7 for maximum space
-            txBox = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(14), Inches(7))
-            tf = txBox.text_frame
-            tf.word_wrap = True
-            tf.vertical_anchor = MSO_ANCHOR.MIDDLE # Center vertically
+            if label or current_group is None:
+                if current_group: grouped_slides.append(current_group)
+                current_group = {'content': content} 
+            else:
+                current_group['content'] += "\n\n" + content
+        if current_group: grouped_slides.append(current_group)
+
+        for ppt_slide in grouped_slides:
+            slide = create_black_slide(prs)
+            tf = get_text_frame(slide)
             
             p = tf.paragraphs[0]
-            # Clean text here too
-            clean_text = lyric_slide.content
-            if clean_text:
-                clean_text = clean_text.replace('\r\n', '\n').replace('\r', '\n').replace('\x0b', '\n')
-
-            p.text = clean_text
+            p.text = ppt_slide['content']
             p.font.name = FONT_NAME
             p.font.size = LYRICS_SIZE
+            p.font.bold = False
             p.font.color.rgb = TEXT_COLOR
             p.alignment = PP_ALIGN.CENTER
-
-            # Corner Label (Bottom Right)
-            if lyric_slide.label:
-                # Top: 0.5 inch, Height: 1 inch
-                txLabel = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(14), Inches(2))
-                pLabel = txLabel.text_frame.paragraphs[0]
-                pLabel.text = lyric_slide.label.upper() # UPPERCASE looks better for headers
-                pLabel.font.name = FONT_NAME
-                pLabel.font.size = LABEL_SIZE
-                pLabel.font.color.rgb = ACCENT_COLOR 
-                pLabel.font.bold = True
-                pLabel.alignment = PP_ALIGN.CENTER
         
-        # C. SPACER SLIDE
+        # C. SPACER
         if index < len(plan) - 1:
             create_black_slide(prs)
 
-    # 3. Save to Memory Buffer
     output = BytesIO()
     prs.save(output)
     output.seek(0)
-
-    # 4. Return as Download
-    filename = "Sabbath_Service_Hymns.pptx"
+    filename = f"Sabbath_Service_{aspect.replace(':','')}.pptx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    
     return StreamingResponse(
-        output, 
-        headers=headers, 
+        output, headers=headers, 
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
 

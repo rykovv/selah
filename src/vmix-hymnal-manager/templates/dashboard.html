@@ -11,7 +11,8 @@
                     <small style="opacity: 0.8;">Auto-syncs to vMix</small>
                 </div>
 
-                <a href="/download/ppt" class="btn btn-light btn-sm fw-bold text-success shadow-sm">
+                <button type="button" class="btn btn-light btn-sm fw-bold text-success shadow-sm" data-bs-toggle="modal"
+                    data-bs-target="#pptSettingsModal">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                         class="bi bi-file-earmark-ppt-fill me-1" viewBox="0 0 16 16">
                         <path d="M8.188 10H7V6.5h1.188a1.75 1.75 0 1 1 0 3.5z" />
@@ -19,7 +20,7 @@
                             d="M4 0h5.293A1 1 0 0 1 10 .293L13.707 4a1 1 0 0 1 .293.707V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm5.5 1.5v2a1 1 0 0 0 1 1h2l-3-3zM7 5.5a1 1 0 0 0-1 1V13a.5.5 0 0 0 1 0v-2h1.188a2.75 2.75 0 0 0 0-5.5H7z" />
                     </svg>
                     Download PPT
-                </a>
+                </button>
             </div>
             <div class="card-body">
                 {% if plan %}
@@ -77,6 +78,91 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="pptSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">PowerPoint Settings</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+
+            <form action="/download/ppt" method="get">
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Aspect Ratio</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="aspect" id="aspect43" value="4:3"
+                                    checked>
+                                <label class="form-check-label" for="aspect43">Standard (4:3)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="aspect" id="aspect169" value="16:9">
+                                <label class="form-check-label" for="aspect169">Widescreen (16:9)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="pptFontSelect" class="form-label fw-bold">Font Family</label>
+
+                        <select class="form-select" name="font_select" id="pptFontSelect"
+                            onchange="toggleManualFont(this)">
+                            <option value="Arial" selected>Arial (Universal)</option>
+                            <option value="Calibri">Calibri (Modern)</option>
+                            <option value="Times New Roman">Times New Roman (Classic)</option>
+                            <option value="Verdana">Verdana (Wide)</option>
+                            <option value="Tahoma">Tahoma</option>
+                            <option value="Century Gothic">Century Gothic</option>
+                            <option value="Manual">Manual input...</option>
+                        </select>
+
+                        <input type="text" class="form-control mt-2 d-none" name="font_manual" id="pptFontManual"
+                            placeholder="Enter font name exactly (e.g. Helvetica)">
+                    </div>
+
+                    <script>
+                        function toggleManualFont(select) {
+                            const manualInput = document.getElementById('pptFontManual');
+                            if (select.value === 'Manual') {
+                                manualInput.classList.remove('d-none');
+                                manualInput.required = true;
+                                manualInput.focus();
+                            } else {
+                                manualInput.classList.add('d-none');
+                                manualInput.required = false;
+                            }
+                        }
+                    </script>
+
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label for="titleSize" class="form-label fw-bold">Title Size (pt)</label>
+                            <input type="number" class="form-control" name="title_size" id="titleSize" value="80"
+                                min="20" max="200">
+                        </div>
+                        <div class="col-6">
+                            <label for="lyricsSize" class="form-label fw-bold">Lyrics Size (pt)</label>
+                            <input type="number" class="form-control" name="lyrics_size" id="lyricsSize" value="60"
+                                min="20" max="200">
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"
+                        onclick="bootstrap.Modal.getInstance(document.getElementById('pptSettingsModal')).hide();">Download
+                        Presentation</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
