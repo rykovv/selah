@@ -1,3 +1,5 @@
+import re
+
 import sys
 import os
 import shutil
@@ -13,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi import UploadFile, File
 
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker, Session, relationship, declarative_base
@@ -22,7 +24,7 @@ from sqlalchemy import or_
 from fastapi.responses import StreamingResponse # Add this to imports
 from pptx import Presentation
 from pptx.util import Inches, Pt
-from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
 from pptx.dml.color import RGBColor
 from io import BytesIO
@@ -805,48 +807,220 @@ def replace_text_preserving_formatting(pptx_path, output_path, replacements):
     prs.save(output_path)
 
 
+def duplicate_slide(pres, index):
+    """
+    Safely duplicates the slide at 'index' to the end of the presentation.
+    Handles Text Boxes, AutoShapes, and Pictures.
+    """
+    source = pres.slides[index]
+    dest = pres.slides.add_slide(source.slide_layout)
+
+    # 1. Copy Background
+    try:
+        if source.background.fill.type == 1: # Solid fill
+            dest.background.fill.solid()
+            dest.background.fill.fore_color.rgb = source.background.fill.fore_color.rgb
+    except:
+        pass # Background might be complex (gradient/picture), skip if fails
+
+    # 2. Copy Shapes
+    for shape in source.shapes:
+        # --- CASE A: TEXT BOXES & SHAPES ---
+        if shape.shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE or shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX:
+            try:
+                # Determine geometry
+                if shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX:
+                    geom = MSO_AUTO_SHAPE_TYPE.RECTANGLE
+                else:
+                    geom = shape.auto_shape_type
+                
+                # Create new shape
+                new_shape = dest.shapes.add_shape(geom, shape.left, shape.top, shape.width, shape.height)
+                
+                # Copy Fill
+                try:
+                    if shape.fill.type == 1:
+                        new_shape.fill.solid()
+                        new_shape.fill.fore_color.rgb = shape.fill.fore_color.rgb
+                except: pass
+
+                # Copy Text & Formatting
+                if shape.has_text_frame:
+                    new_shape.text_frame.clear()
+                    for paragraph in shape.text_frame.paragraphs:
+                        new_p = new_shape.text_frame.add_paragraph()
+                        new_p.text = paragraph.text
+                        new_p.alignment = paragraph.alignment
+                        
+                        # Copy Font Styles from first run
+                        if paragraph.runs:
+                            r_source = paragraph.runs[0]
+                            r_dest = new_p.font
+                            r_dest.name = r_source.font.name
+                            r_dest.size = r_source.font.size
+                            r_dest.bold = r_source.font.bold
+                            r_dest.italic = r_source.font.italic
+                            r_dest.underline = r_source.font.underline
+                            try:
+                                if r_source.font.color.type == 1:
+                                    r_dest.color.rgb = r_source.font.color.rgb
+                            except: pass
+            except Exception as e:
+                print(f"Skipping shape due to error: {e}")
+
+        # --- CASE B: PICTURES ---
+        elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+            try:
+                blob = shape.image.blob
+                from io import BytesIO
+                dest.shapes.add_picture(BytesIO(blob), shape.left, shape.top, shape.width, shape.height)
+            except: pass
+
+    return dest
+
+
+def move_slide(pres, old_index, new_index):
+    """Moves a slide from old_index to new_index."""
+    xml_slides = pres.slides._sldIdLst
+    slides = list(xml_slides)
+    xml_slides.remove(slides[old_index])
+    xml_slides.insert(new_index, slides[old_index])
+
+
 # --- DOWNLOAD ENDPOINT ---
 @app.get("/programs/{id}/download_ppt")
 def download_program_ppt(id: int, db: Session = Depends(get_db)):
     prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
     
-    # Validation
     if not prog or not prog.template_id:
-        return Response("No template assigned to this program.", status_code=400)
+        return Response("No template assigned.", status_code=400)
     
     template = db.query(PresentationTemplateModel).filter(PresentationTemplateModel.id == prog.template_id).first()
     if not template:
-        return Response("Assigned template file not found.", status_code=404)
+        return Response("Template file not found.", status_code=404)
 
-    # 1. Build Replacement Dictionary
-    # Map { "tag": "subtitle" }
+    input_path = f"{UPLOAD_DIR}/{template.filename}"
+    if not os.path.exists(input_path):
+        return Response("Template file missing on disk.", status_code=404)
+
+    prs = Presentation(input_path)
+    
+    # --- PHASE 1: STANDARD REPLACEMENTS ---
     replacements = {}
     for item in prog.items:
         if item.tag and item.subtitle:
-            replacements[item.tag] = item.subtitle # e.g. "sermon_title": "The Great Hope"
+            replacements[item.tag] = item.subtitle
+    
+    search_replace_pairs = {("{{" + key + "}}"): str(value) for key, value in replacements.items()}
+    
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for paragraph in shape.text_frame.paragraphs:
+                    full_text = paragraph.text
+                    for pattern, replacement in search_replace_pairs.items():
+                        if pattern in full_text:
+                            full_text = full_text.replace(pattern, replacement)
+                            paragraph.text = full_text
+                            
 
-    # 2. Define Paths
-    input_path = f"{UPLOAD_DIR}/{template.filename}"
-    output_filename = f"Service_{prog.id}.pptx"
-    output_path = f"{UPLOAD_DIR}/{output_filename}"
+    # --- PHASE 2: HYMN EXPLOSION (REUSE STRATEGY) ---
+    # We iterate backwards to maintain valid indices for upcoming slides
+    for i in range(len(prs.slides) - 1, -1, -1):
+        slide = prs.slides[i]
+        
+        # 1. Check for Hymn Tag
+        hymn_seq = None
+        hymn_tag_pattern = ""
+        
+        for shape in slide.shapes:
+            if not shape.has_text_frame: continue
+            for paragraph in shape.text_frame.paragraphs:
+                match = re.search(r"\{\{hymn_(\d+)\}\}", paragraph.text)
+                if match:
+                    hymn_seq = int(match.group(1))
+                    hymn_tag_pattern = match.group(0)
+                    break
+            if hymn_seq: break
+        
+        if not hymn_seq: continue 
+            
+        # 2. Fetch Content
+        plan_item = db.query(ServicePlanHymnModel).filter(ServicePlanHymnModel.sequence == hymn_seq).first()
+        content_chunks = []
 
-    # 3. Run Generation
-    try:
-        replace_text_preserving_formatting(input_path, output_path, replacements)
-    except Exception as e:
-        return Response(f"Error generating PPT: {str(e)}", status_code=500)
+        # breakpoint()
+        
+        if not plan_item or not plan_item.hymn:
+            content_chunks.append(f"(Hymn #{hymn_seq} not scheduled)")
+        else:
+            hymn = plan_item.hymn
+            # Chunk 0: Title
+            content_chunks.append(f"#{hymn.number}\n{hymn.title}")
+            # Chunk 1+: Lyrics
+            ppt_slides = [s for s in hymn.slides if s.type == "PPT"]
+            if ppt_slides:
+                for s in sorted(ppt_slides, key=lambda x: x.order):
+                    content_chunks.append(s.content)
+            else:
+                raw_text = hymn.content_search or ""
+                content_chunks.extend(raw_text.split('\n\n'))
 
-    # 4. Stream File
-    def iterfile():
-        with open(output_path, mode="rb") as file_like:
-            yield from file_like
-        # Cleanup temp file after sending
-        try: os.remove(output_path) 
-        except: pass
+        # 3. Apply Content
+        # We have 'slide' at index 'i' which contains the Tag.
+        # We have N chunks.
+        # Chunk 0 will go into 'slide' (The Original).
+        # Chunks 1..N will go into NEW slides inserted after 'i'.
+        
+        def clean_text(text):
+            if not text: return ""
+            return text.replace('\r\n', '\n').replace('\r', '\n').replace('\x0b', '\n').strip()
+        
+        # B. Handle First Chunk (Modify Original)
+        # Now we finally replace the tag in the original slide.
+        first_chunk = content_chunks[0]
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for paragraph in shape.text_frame.paragraphs:
+                    if hymn_tag_pattern in paragraph.text:
+                        paragraph.text = paragraph.text.replace(hymn_tag_pattern, clean_text(first_chunk))
 
-    headers = {"Content-Disposition": f'attachment; filename="{prog.name}.pptx"'}
-    return StreamingResponse(iterfile(), headers=headers, media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation")
+        # breakpoint()
 
+        # A. Handle Extra Chunks (Create Copies First)
+        # We do this BEFORE modifying the original 'slide', so the copies inherit the Tag.
+        
+
+        insertion_index = i + 1
+        
+        for extra_chunk in content_chunks[1:]:
+            # Duplicate the Original Template (which still has the {{hymn_x}} tag)
+            new_slide = duplicate_slide(prs, i)
+            
+            # Move it to the correct position (immediately after the previous one)
+            # new_slide is currently at len(prs.slides)-1
+            move_slide(prs, len(prs.slides)-1, insertion_index)
+            
+            # Replace the tag in the NEW slide
+            for s in new_slide.shapes:
+                if s.has_text_frame:
+                    for p in s.text_frame.paragraphs:
+                        p.text = p.text.replace(p.text, clean_text(extra_chunk))
+            
+            insertion_index += 1
+
+
+    # --- SAVE ---
+    output = BytesIO()
+    prs.save(output)
+    output.seek(0)
+    
+    filename = f"{prog.name.replace(' ', '_')}.pptx"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(
+        output, headers=headers, 
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
 
 # --- VMIX ENDPOINT ---
 
