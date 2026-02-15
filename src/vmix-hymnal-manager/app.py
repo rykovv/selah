@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 
 import uvicorn
 
@@ -7,6 +8,7 @@ from fastapi import FastAPI, Depends
 from fastapi import Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi import UploadFile, File
 
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
@@ -25,6 +27,7 @@ from io import BytesIO
 
 
 DATABASE_URL = "sqlite:///./hymns.db"
+UPLOAD_DIR = "templates"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -99,26 +102,34 @@ class ServicePlanModel(Base):
 
 class ProgramModel(Base):
     __tablename__ = "programs"
-
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String) # e.g. "Divine Service", "Vespers"
+    name = Column(String) 
     is_active = Column(Boolean, default=False)
     
-    # Relationships
+    template_id = Column(Integer, ForeignKey("presentation_templates.id"), nullable=True)
+    
+    template = relationship("PresentationTemplateModel")
     items = relationship("ProgramItemModel", back_populates="program", cascade="all, delete-orphan")
 
 
 class ProgramItemModel(Base):
     __tablename__ = "program_items"
-
     id = Column(Integer, primary_key=True, index=True)
     program_id = Column(Integer, ForeignKey("programs.id"))
-    
-    sequence = Column(Integer) # Order in the list
-    title = Column(String)     # e.g. "Welcome", "Scripture"
-    subtitle = Column(String)  # e.g. "John Doe", "Psalm 23"
-    
+    sequence = Column(Integer)
+    title = Column(String)     
+    subtitle = Column(String)
+
+    tag = Column(String) # e.g. "sermon_title", "offering"
+
     program = relationship("ProgramModel", back_populates="items")
+
+
+class PresentationTemplateModel(Base):
+    __tablename__ = "presentation_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    filename = Column(String) # The actual file name on disk
 
 # --- 3. The vMix Transformation Logic ---
 
@@ -135,6 +146,7 @@ app = FastAPI()
 
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
+
 
 @app.get("/api/vmix", response_model=List[VmixRow])
 def get_vmix_feed(db: Session = Depends(get_db)):
@@ -709,7 +721,13 @@ def program_editor_page(id: int, request: Request, db: Session = Depends(get_db)
     # We use 9999 as a fallback if sequence is None to put unsorted items at the end
     prog.items.sort(key=lambda x: (x.sequence if x.sequence is not None else 9999, x.id))
         
-    return templates.TemplateResponse("program_editor.html", {"request": request, "program": prog})
+    all_templates = db.query(PresentationTemplateModel).all()
+    
+    return templates.TemplateResponse("program_editor.html", {
+        "request": request, 
+        "program": prog, 
+        "templates": all_templates
+    })
 
 
 @app.delete("/programs/{id}")
@@ -731,14 +749,20 @@ def edit_program(id: int, request: Request, db: Session = Depends(get_db)):
     prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
     return templates.TemplateResponse("partials/program_editor.html", {"request": request, "program": prog})
 
+
 @app.post("/programs/{id}/update_meta")
-def update_program_meta(id: int, name: str = Form(...), db: Session = Depends(get_db)):
-    # Removed 'date' parameter from function signature
+def update_program_meta(
+    id: int, 
+    name: str = Form(...), 
+    template_id: int = Form(None), # Accept template_id
+    db: Session = Depends(get_db)
+):
     prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
     prog.name = name
-    # Removed prog.date = date
+    prog.template_id = template_id # Save
     db.commit()
     return Response(status_code=200)
+
 
 @app.post("/programs/{id}/add_item")
 def add_program_item(id: int, request: Request, db: Session = Depends(get_db)):
@@ -749,19 +773,126 @@ def add_program_item(id: int, request: Request, db: Session = Depends(get_db)):
     db.refresh(new_item)
     return templates.TemplateResponse("partials/program_row.html", {"request": request, "item": new_item})
 
+
 @app.post("/programs/item/{item_id}/update")
-def update_item(item_id: int, title: str = Form(""), subtitle: str = Form(""), db: Session = Depends(get_db)):
+def update_item(item_id: int, title: str = Form(""), subtitle: str = Form(""), tag: str = Form(""), db: Session = Depends(get_db)):
     item = db.query(ProgramItemModel).filter(ProgramItemModel.id == item_id).first()
     item.title = title
     item.subtitle = subtitle
+    item.tag = tag # Save Tag
     db.commit()
     return Response(status_code=200)
+
 
 @app.delete("/programs/item/{item_id}")
 def delete_item(item_id: int, db: Session = Depends(get_db)):
     db.query(ProgramItemModel).filter(ProgramItemModel.id == item_id).delete()
     db.commit()
     return Response(status_code=200)
+
+
+# --- PPT GENERATION LOGIC ---
+def replace_text_preserving_formatting(pptx_path, output_path, replacements):
+    if not os.path.exists(pptx_path): return
+
+    prs = Presentation(pptx_path)
+    # Prepare keys with double braces {{key}}
+    search_replace_pairs = {("{{" + key + "}}"): str(value) for key, value in replacements.items()}
+
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if not shape.has_text_frame: continue
+            
+            for paragraph in shape.text_frame.paragraphs:
+                full_text = paragraph.text
+                match_found = False
+                
+                # Check for matches
+                for pattern, replacement in search_replace_pairs.items():
+                    if pattern in full_text:
+                        full_text = full_text.replace(pattern, replacement)
+                        match_found = True
+                
+                if match_found:
+                    # Capture style of first run
+                    original_runs = paragraph.runs
+                    saved_font_props = None
+                    if len(original_runs) > 0:
+                        first_run = original_runs[0]
+                        saved_font_props = {
+                            'bold': first_run.font.bold,
+                            'italic': first_run.font.italic,
+                            'underline': first_run.font.underline,
+                            'size': first_run.font.size,
+                            'name': first_run.font.name,
+                            'color_obj': first_run.font.color if first_run.font.color else None
+                        }
+
+                    # Replace text
+                    paragraph.clear() 
+                    new_run = paragraph.add_run()
+                    new_run.text = full_text
+
+                    # Re-apply formatting
+                    if saved_font_props:
+                        new_run.font.bold = saved_font_props['bold']
+                        new_run.font.italic = saved_font_props['italic']
+                        new_run.font.underline = saved_font_props['underline']
+                        new_run.font.size = saved_font_props['size']
+                        new_run.font.name = saved_font_props['name']
+                        if saved_font_props['color_obj']:
+                            try:
+                                if saved_font_props['color_obj'].type == 1: 
+                                    new_run.font.color.rgb = saved_font_props['color_obj'].rgb
+                                elif saved_font_props['color_obj'].type == 2:
+                                    new_run.font.color.theme_color = saved_font_props['color_obj'].theme_color
+                            except: pass
+
+    prs.save(output_path)
+
+
+# --- DOWNLOAD ENDPOINT ---
+@app.get("/programs/{id}/download_ppt")
+def download_program_ppt(id: int, db: Session = Depends(get_db)):
+    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    
+    # Validation
+    if not prog or not prog.template_id:
+        return Response("No template assigned to this program.", status_code=400)
+    
+    template = db.query(PresentationTemplateModel).filter(PresentationTemplateModel.id == prog.template_id).first()
+    if not template:
+        return Response("Assigned template file not found.", status_code=404)
+
+    # 1. Build Replacement Dictionary
+    # Map { "tag": "subtitle" }
+    replacements = {}
+    for item in prog.items:
+        if item.tag and item.subtitle:
+            replacements[item.tag] = item.subtitle # e.g. "sermon_title": "The Great Hope"
+
+    # 2. Define Paths
+    input_path = f"{UPLOAD_DIR}/{template.filename}"
+    output_filename = f"Service_{prog.id}.pptx"
+    output_path = f"{UPLOAD_DIR}/{output_filename}"
+
+    # 3. Run Generation
+    try:
+        replace_text_preserving_formatting(input_path, output_path, replacements)
+    except Exception as e:
+        return Response(f"Error generating PPT: {str(e)}", status_code=500)
+
+    # 4. Stream File
+    def iterfile():
+        with open(output_path, mode="rb") as file_like:
+            yield from file_like
+        # Cleanup temp file after sending
+        try: os.remove(output_path) 
+        except: pass
+
+    headers = {"Content-Disposition": f'attachment; filename="{prog.name}.pptx"'}
+    return StreamingResponse(iterfile(), headers=headers, media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation")
+
 
 # --- VMIX ENDPOINT ---
 
@@ -797,6 +928,41 @@ def reorder_program_items(
             item.sequence = index
             
     db.commit()
+    return Response(status_code=200)
+
+
+@app.get("/templates_manager", response_class=HTMLResponse)
+def page_templates(request: Request, db: Session = Depends(get_db)):
+    tmpls = db.query(PresentationTemplateModel).all()
+    return templates.TemplateResponse("templates_manager.html", {"request": request, "templates": tmpls})
+
+
+@app.post("/templates/upload")
+def upload_template(name: str = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db)):
+    # Save file
+    file_location = f"{UPLOAD_DIR}/{file.filename}"
+    with open(file_location, "wb+") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Save DB entry
+    new_tmpl = PresentationTemplateModel(name=name, filename=file.filename)
+    db.add(new_tmpl)
+    db.commit()
+    
+    return RedirectResponse("/templates_manager", status_code=303)
+
+
+@app.delete("/templates/{id}")
+def delete_template(id: int, db: Session = Depends(get_db)):
+    tmpl = db.query(PresentationTemplateModel).filter(PresentationTemplateModel.id == id).first()
+    if tmpl:
+        # Try removing file
+        try:
+            os.remove(f"{UPLOAD_DIR}/{tmpl.filename}")
+        except:
+            pass
+        db.delete(tmpl)
+        db.commit()
     return Response(status_code=200)
 
 
@@ -844,4 +1010,6 @@ def get_current_program_json(db: Session = Depends(get_db)):
 
 
 if __name__ == "__main__":
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    
     uvicorn.run(app, host="0.0.0.0", port=10001)

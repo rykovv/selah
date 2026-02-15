@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Presentation Templates</h3>
+        <a href="/programs" class="btn btn-outline-secondary btn-sm">&larr; Back to Programs</a>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body bg-light">
+            <h5 class="card-title mb-3">Upload New Template</h5>
+            <form action="/templates/upload" method="post" enctype="multipart/form-data"
+                class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small fw-bold">Template Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Standard Sabbath" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small fw-bold">PowerPoint File (.pptx)</label>
+                    <input type="file" name="file" class="form-control" accept=".pptx" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <ul class="list-group list-group-flush">
+            {% for t in templates %}
+            <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-warning-subtle text-warning p-2 rounded">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                            class="bi bi-file-earmark-slides" viewBox="0 0 16 16">
+                            <path
+                                d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5zm-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zM5 8a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5zm0 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1H5z" />
+                            <path
+                                d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">{{ t.name }}</h6>
+                        <small class="text-muted">{{ t.filename }}</small>
+                    </div>
+                </div>
+                <button class="btn btn-outline-danger btn-sm" hx-delete="/templates/{{ t.id }}" hx-target="closest li"
+                    hx-swap="outerHTML">Delete</button>
+            </li>
+            {% endfor %}
+            {% if not templates %}
+            <li class="list-group-item p-4 text-center text-muted">No templates uploaded yet.</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
