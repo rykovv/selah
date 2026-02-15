@@ -195,44 +195,10 @@ def get_vmix_feed(db: Session = Depends(get_db)):
             
     return vmix_output
 
-# --- 5. SEED DATA (For testing only) ---
-
-@app.get("/debug/seed")
-def seed_database(db: Session = Depends(get_db)):
-    """A helper to populate the DB so you don't start empty."""
-    
-    # Clear existing
-    db.query(ServicePlanModel).delete()
-    db.query(SlideModel).delete()
-    db.query(HymnModel).delete()
-    
-    # Create Hymn 1
-    h1 = HymnModel(number="101", title="Amazing Grace")
-    db.add(h1)
-    db.commit() # Commit to get the ID
-    
-    # Add Slides for Hymn 1
-    db.add(SlideModel(hymn_id=h1.id, order=1, label="v1", content="Amazing grace! How sweet the sound\nThat saved a wretch like me!"))
-    db.add(SlideModel(hymn_id=h1.id, order=2, label="v2", content="'Twas grace that taught my heart to fear,\nAnd grace my fears relieved;"))
-    
-    # Create Hymn 2
-    h2 = HymnModel(number="402", title="It is Well")
-    db.add(h2)
-    db.commit()
-    
-    db.add(SlideModel(hymn_id=h2.id, order=1, label="v1", content="When peace like a river\nAttendeth my way"))
-    
-    # Add to Service Plan (Playlist)
-    db.add(ServicePlanModel(sequence=1, hymn_id=h1.id)) # Amazing Grace first
-    db.add(ServicePlanModel(sequence=2, hymn_id=h2.id)) # It is Well second
-    
-    db.commit()
-    return {"status": "Database seeded with 2 hymns and a service plan."}
-
 
 @app.get("/", response_class=HTMLResponse)
 def read_dashboard(request: Request, db: Session = Depends(get_db)):
-    """The new Main Dashboard: Active Program + Service Plan"""
+    """The new Main Dashboard: Active Program + Service Program"""
     
     # 1. Get Active Program
     active_prog = db.query(ProgramModel).filter(ProgramModel.is_active == True).first()
@@ -424,24 +390,6 @@ def search_library(request: Request, q: str = "", db: Session = Depends(get_db))
     })
 
 
-# @app.delete("/hymns/{hymn_id}")
-# def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
-#     # 1. Manual Cascade: Remove this hymn from any Service Plans first
-#     # This prevents the "Foreign Key Constraint" error
-#     db.query(ServicePlanModel).filter(ServicePlanModel.hymn_id == hymn_id).delete()
-    
-#     # 2. Find and delete the hymn
-#     hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
-#     if hymn:
-#         db.delete(hymn)
-#         db.commit()
-        
-#     # 3. HTMX Redirect
-#     # Instead of returning HTML, we send a header that tells the browser 
-#     # to load the /editor page. This prevents the "Race Condition".
-#     return Response(status_code=200, headers={"HX-Redirect": "/editor"})
-
-
 @app.get("/editor/search", response_class=HTMLResponse)
 def search_editor_library(request: Request, q: str = "", db: Session = Depends(get_db)):
     """
@@ -555,7 +503,7 @@ def download_ppt(
     
     plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
     if not plan:
-        return Response("Service plan is empty", status_code=400)
+        return Response("Service program is empty", status_code=400)
 
     prs = Presentation()
     
