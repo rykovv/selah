@@ -408,35 +408,75 @@ def search_editor_library(request: Request, q: str = "", db: Session = Depends(g
 
 @app.get("/hymns/{hymn_id}/preview", response_class=HTMLResponse)
 def preview_hymn(hymn_id: int, db: Session = Depends(get_db)):
-    """Returns the hymn lyrics for the modal preview."""
+    """Returns the hymn lyrics in a tabbed view (vMix & PPT)."""
     hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
     if not hymn:
         return "<div>Hymn not found</div>"
     
-    hymn.slides.sort(key=lambda x: x.order)
-    
-    # We construct the HTML directly here to avoid creating another file
+    # 1. Separate Slides by Type
+    vmix_slides = sorted([s for s in hymn.slides if s.type == "VMIX"], key=lambda x: x.order)
+    # Fallback for old data: if no type is set, treat as VMIX
+    if not vmix_slides:
+        vmix_slides = sorted([s for s in hymn.slides if s.type is None], key=lambda x: x.order)
+
+    ppt_slides = sorted([s for s in hymn.slides if s.type == "PPT"], key=lambda x: x.order)
+
+    # 2. Helper to generate slide HTML
+    def render_slides(slides):
+        if not slides:
+            return '<div class="text-muted text-center p-4">No slides defined for this format.</div>'
+        
+        html_out = ""
+        for i, slide in enumerate(slides):
+            badge_class = "bg-secondary"
+            lbl = slide.label.lower() if slide.label else ""
+            if "v" in lbl: badge_class = "bg-primary"
+            if "c" in lbl: badge_class = "bg-success"
+            
+            badge = f'<span class="badge {badge_class} me-2">{slide.label}</span>' if slide.label else ""
+            
+            html_out += f"""
+            <div class="card mb-2 border-0 shadow-sm bg-light">
+                <div class="card-body p-2 d-flex">
+                    <div style="min-width: 80px;" class="text-muted small me-2">
+                        Slide {i+1}<br>{badge}
+                    </div>
+                    <div class="text-dark flex-grow-1" style="white-space: pre-wrap; font-family: sans-serif; font-size: 1.1rem;">{slide.content}</div>
+                </div>
+            </div>
+            """
+        return html_out
+
+    # 3. Construct the Tabbed Interface
     html = f"""
-    <div class="p-2">
-        <h4 class="text-primary mb-3">{hymn.number} - {hymn.title}</h4>
+    <div class="p-0">
+        <h4 class="text-primary px-2 mb-3">{hymn.number} - {hymn.title}</h4>
+
+        <ul class="nav nav-tabs px-2" id="previewTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="prev-vmix-tab" data-bs-toggle="tab" data-bs-target="#prev-vmix" type="button" role="tab">
+                    vMix (Live)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="prev-ppt-tab" data-bs-toggle="tab" data-bs-target="#prev-ppt" type="button" role="tab">
+                    PowerPoint
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content p-2 mt-2" id="previewTabContent">
+            <div class="tab-pane fade show active" id="prev-vmix" role="tabpanel">
+                {render_slides(vmix_slides)}
+            </div>
+            
+            <div class="tab-pane fade" id="prev-ppt" role="tabpanel">
+                {render_slides(ppt_slides)}
+            </div>
+        </div>
+    </div>
     """
     
-    for slide in hymn.slides:
-        # Determine badge color
-        badge_class = "bg-secondary"
-        if "v" in slide.label.lower(): badge_class = "bg-primary"
-        if "c" in slide.label.lower(): badge_class = "bg-success"
-        
-        badge = f'<span class="badge {badge_class} me-2">{slide.label}</span>' if slide.label else ""
-        
-        html += f"""
-        <div class="d-flex mb-3 border-bottom pb-2">
-            <div class="mt-1">{badge}</div>
-            <div class="ms-2 text-dark" style="white-space: pre-wrap; font-size: 1.1rem;">{slide.content}</div>
-        </div>
-        """
-    
-    html += "</div>"
     return html
 
 
