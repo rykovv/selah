@@ -830,7 +830,7 @@ def duplicate_slide(pres, index):
             try:
                 # Determine geometry
                 if shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX:
-                    geom = MSO_AUTO_SHAPE_TYPE.RECTANGLE
+                    geom = MSO_SHAPE.RECTANGLE
                 else:
                     geom = shape.auto_shape_type
                 
@@ -887,6 +887,46 @@ def move_slide(pres, old_index, new_index):
     xml_slides.insert(new_index, slides[old_index])
 
 
+def delete_slides_with_pattern(prs, pattern):
+    """
+    Opens a PowerPoint presentation, finds slides containing a specific text pattern,
+    deletes them, and saves the result.
+
+    Args:
+        input_path (str): Path to the source .pptx file.
+        output_path (str): Path where the modified .pptx will be saved.
+        pattern (str): The text pattern to search for (case-sensitive).
+    """
+    slides_to_delete_indices = []
+
+    # 2. Iterate through slides to find matches
+    # We store indices instead of deleting immediately to avoid iteration errors
+    for i, slide in enumerate(prs.slides):
+        found_pattern = False
+        
+        # Check all shapes in the slide for text
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                if shape.text and pattern in shape.text:
+                    found_pattern = True
+                    break
+        
+        if found_pattern:
+            slides_to_delete_indices.append(i)
+
+    # 3. Delete the slides
+    # We must delete in reverse order (highest index first) 
+    # so that removing a slide doesn't shift the indices of subsequent slides we want to delete.
+    if slides_to_delete_indices:
+        xml_slides = prs.slides._sldIdLst
+        slides_element_list = list(xml_slides)
+        
+        for index in sorted(slides_to_delete_indices, reverse=True):
+            xml_slides.remove(slides_element_list[index])
+    
+    return prs
+
+
 # --- DOWNLOAD ENDPOINT ---
 @app.get("/programs/{id}/download_ppt")
 def download_program_ppt(id: int, db: Session = Depends(get_db)):
@@ -931,7 +971,6 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
         
         # 1. Check for Hymn Tag
         hymn_seq = None
-        hymn_tag_pattern = ""
         
         for shape in slide.shapes:
             if not shape.has_text_frame: continue
@@ -939,7 +978,6 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
                 match = re.search(r"\{\{hymn_(\d+)\}\}", paragraph.text)
                 if match:
                     hymn_seq = int(match.group(1))
-                    hymn_tag_pattern = match.group(0)
                     break
             if hymn_seq: break
         
@@ -948,15 +986,13 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
         # 2. Fetch Content
         plan_item = db.query(ServicePlanHymnModel).filter(ServicePlanHymnModel.sequence == hymn_seq).first()
         content_chunks = []
-
-        # breakpoint()
         
         if not plan_item or not plan_item.hymn:
             content_chunks.append(f"(Hymn #{hymn_seq} not scheduled)")
         else:
             hymn = plan_item.hymn
             # Chunk 0: Title
-            content_chunks.append(f"#{hymn.number}\n{hymn.title}")
+            content_chunks.append(f"Hymn #{hymn.number}\n{hymn.title}")
             # Chunk 1+: Lyrics
             ppt_slides = [s for s in hymn.slides if s.type == "PPT"]
             if ppt_slides:
@@ -967,39 +1003,20 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
                 content_chunks.extend(raw_text.split('\n\n'))
 
         # 3. Apply Content
-        # We have 'slide' at index 'i' which contains the Tag.
-        # We have N chunks.
-        # Chunk 0 will go into 'slide' (The Original).
-        # Chunks 1..N will go into NEW slides inserted after 'i'.
         
         def clean_text(text):
             if not text: return ""
             return text.replace('\r\n', '\n').replace('\r', '\n').replace('\x0b', '\n').strip()
-        
-        # B. Handle First Chunk (Modify Original)
-        # Now we finally replace the tag in the original slide.
-        first_chunk = content_chunks[0]
-        for shape in slide.shapes:
-            if shape.has_text_frame:
-                for paragraph in shape.text_frame.paragraphs:
-                    if hymn_tag_pattern in paragraph.text:
-                        paragraph.text = paragraph.text.replace(hymn_tag_pattern, clean_text(first_chunk))
 
-        # breakpoint()
-
-        # A. Handle Extra Chunks (Create Copies First)
-        # We do this BEFORE modifying the original 'slide', so the copies inherit the Tag.
+        insertion_index = i
         
-
-        insertion_index = i + 1
-        
-        for extra_chunk in content_chunks[1:]:
+        for extra_chunk in content_chunks:
             # Duplicate the Original Template (which still has the {{hymn_x}} tag)
             new_slide = duplicate_slide(prs, i)
             
             # Move it to the correct position (immediately after the previous one)
             # new_slide is currently at len(prs.slides)-1
-            move_slide(prs, len(prs.slides)-1, insertion_index)
+            move_slide(prs, len(prs.slides)-1, insertion_index + 1)
             
             # Replace the tag in the NEW slide
             for s in new_slide.shapes:
@@ -1007,8 +1024,9 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
                     for p in s.text_frame.paragraphs:
                         p.text = p.text.replace(p.text, clean_text(extra_chunk))
             
-            insertion_index += 1
+            insertion_index += 1 
 
+    delete_slides_with_pattern(prs, "{{hymn_")
 
     # --- SAVE ---
     output = BytesIO()
