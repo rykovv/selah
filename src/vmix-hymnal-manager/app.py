@@ -73,7 +73,7 @@ class HymnModel(Base):
     
     # Relationship: One Hymn -> Many Slides
     slides = relationship("SlideModel", back_populates="hymn", cascade="all, delete-orphan")
-    service_plans = relationship("ServicePlanModel", back_populates="hymn")
+    service_plans = relationship("ServicePlanHymnModel", back_populates="hymn")
 
 class SlideModel(Base):
     __tablename__ = "slides"
@@ -84,14 +84,14 @@ class SlideModel(Base):
     content = Column(Text)
     order = Column(Integer)
     
-    # NEW COLUMN: 'VMIX' or 'PPT'
+    # 'VMIX' or 'PPT'
     # We default to 'VMIX' so existing data still works
     type = Column(String, default="VMIX") 
 
     hymn = relationship("HymnModel", back_populates="slides")
 
 
-class ServicePlanModel(Base):
+class ServicePlanHymnModel(Base):
     __tablename__ = "service_plan"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -102,7 +102,7 @@ class ServicePlanModel(Base):
     hymn = relationship("HymnModel", back_populates="service_plans")
 
 
-class ProgramModel(Base):
+class ServiceProgramModel(Base):
     __tablename__ = "programs"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String) 
@@ -111,10 +111,10 @@ class ProgramModel(Base):
     last_used = Column(DateTime, default=datetime.now(timezone.utc))
 
     template = relationship("PresentationTemplateModel")
-    items = relationship("ProgramItemModel", back_populates="program", cascade="all, delete-orphan")
+    items = relationship("ServiceProgramItemModel", back_populates="program", cascade="all, delete-orphan")
 
 
-class ProgramItemModel(Base):
+class ServiceProgramItemModel(Base):
     __tablename__ = "program_items"
     id = Column(Integer, primary_key=True, index=True)
     program_id = Column(Integer, ForeignKey("programs.id"))
@@ -122,9 +122,9 @@ class ProgramItemModel(Base):
     title = Column(String)     
     subtitle = Column(String)
 
-    tag = Column(String) # e.g. "sermon_title", "offering"
+    tag = Column(String) # PPT tag for dynamic replacement, e.g. {{offertory}}
 
-    program = relationship("ProgramModel", back_populates="items")
+    program = relationship("ServiceProgramModel", back_populates="items")
 
 
 class PresentationTemplateModel(Base):
@@ -158,7 +158,7 @@ def get_vmix_feed(db: Session = Depends(get_db)):
     3. Flatten into the list format vMix needs.
     """
     # Get the plan, ordered by sequence (1st hymn, 2nd hymn...)
-    service_items = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
+    service_items = db.query(ServicePlanHymnModel).order_by(ServicePlanHymnModel.sequence).all()
     
     vmix_output = []
     
@@ -201,13 +201,13 @@ def read_dashboard(request: Request, db: Session = Depends(get_db)):
     """The new Main Dashboard: Active Program + Service Program"""
     
     # 1. Get Active Program
-    active_prog = db.query(ProgramModel).filter(ProgramModel.is_active == True).first()
+    active_prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.is_active == True).first()
     if active_prog:
         # Sort items
         active_prog.items.sort(key=lambda x: (x.sequence if x.sequence is not None else 9999, x.id))
 
     # 2. Get Hymn Service Plan
-    plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
+    plan = db.query(ServicePlanHymnModel).order_by(ServicePlanHymnModel.sequence).all()
     
     return templates.TemplateResponse("index.html", {
         "request": request, 
@@ -223,7 +223,7 @@ def page_hymns_manager(
 ):
     """The Hymn Selection Interface (Old Dashboard)"""
     # 1. Get the current plan
-    plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
+    plan = db.query(ServicePlanHymnModel).order_by(ServicePlanHymnModel.sequence).all()
     # 2. Get the full library (Simple version: fetch all)
     library = db.query(HymnModel).order_by(HymnModel.number).all()
     
@@ -238,10 +238,10 @@ def page_hymns_manager(
 def add_to_plan(hymn_id: int = Form(...), db: Session = Depends(get_db)):
     """Add a hymn to the end of the service list."""
     # Find the current highest sequence number
-    last_item = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence.desc()).first()
+    last_item = db.query(ServicePlanHymnModel).order_by(ServicePlanHymnModel.sequence.desc()).first()
     new_seq = (last_item.sequence + 1) if last_item else 1
     
-    new_entry = ServicePlanModel(sequence=new_seq, hymn_id=hymn_id)
+    new_entry = ServicePlanHymnModel(sequence=new_seq, hymn_id=hymn_id)
     db.add(new_entry)
     db.commit()
     
@@ -252,7 +252,7 @@ def add_to_plan(hymn_id: int = Form(...), db: Session = Depends(get_db)):
 @app.delete("/plan/{item_id}")
 def remove_from_plan(item_id: int, db: Session = Depends(get_db)):
     """Remove an item. HTMX expects a 200 OK or empty response."""
-    item = db.query(ServicePlanModel).filter(ServicePlanModel.id == item_id).first()
+    item = db.query(ServicePlanHymnModel).filter(ServicePlanHymnModel.id == item_id).first()
     if item:
         db.delete(item)
         db.commit()
@@ -336,7 +336,7 @@ def save_hymn(
 @app.delete("/hymns/{hymn_id}")
 def delete_hymn(hymn_id: int, db: Session = Depends(get_db)):
     # 1. Manual Cascade: Remove from service plans
-    db.query(ServicePlanModel).filter(ServicePlanModel.hymn_id == hymn_id).delete()
+    db.query(ServicePlanHymnModel).filter(ServicePlanHymnModel.hymn_id == hymn_id).delete()
     
     # 2. Delete the hymn
     hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
@@ -501,7 +501,7 @@ def download_ppt(
 ):
     """Generates a Service PowerPoint with Manual Font Support."""
     
-    plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
+    plan = db.query(ServicePlanHymnModel).order_by(ServicePlanHymnModel.sequence).all()
     if not plan:
         return Response("Service program is empty", status_code=400)
 
@@ -640,9 +640,9 @@ def download_ppt(
 
 @app.get("/programs", response_class=HTMLResponse)
 def page_programs(request: Request, db: Session = Depends(get_db)):
-    programs = db.query(ProgramModel).order_by(
-        ProgramModel.last_used.desc(), 
-        ProgramModel.id.desc()
+    programs = db.query(ServiceProgramModel).order_by(
+        ServiceProgramModel.last_used.desc(), 
+        ServiceProgramModel.id.desc()
     ).all()
     return templates.TemplateResponse("programs.html", {"request": request, "programs": programs})
 
@@ -651,7 +651,7 @@ def page_programs(request: Request, db: Session = Depends(get_db)):
 def new_program(db: Session = Depends(get_db)):
     # Create blank program with default name
     # We removed the date logic here
-    new_prog = ProgramModel(name="New Service Program", is_active=False, last_used=datetime.now(timezone.utc))
+    new_prog = ServiceProgramModel(name="New Service Program", is_active=False, last_used=datetime.now(timezone.utc))
     
     db.add(new_prog)
     db.commit()
@@ -663,7 +663,7 @@ def new_program(db: Session = Depends(get_db)):
 # 3. THE NEW EDITOR PAGE (Full Screen)
 @app.get("/programs/{id}", response_class=HTMLResponse)
 def program_editor_page(id: int, request: Request, db: Session = Depends(get_db)):
-    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
     
     if not prog:
         return RedirectResponse("/programs")
@@ -689,7 +689,7 @@ def delete_program(id: int, db: Session = Depends(get_db)):
     
     # 1. Delete the program (Cascades to items automatically if configured, 
     #    but standard SQLAlchemy delete usually handles it if relationships are set correctly)
-    db.query(ProgramModel).filter(ProgramModel.id == id).delete()
+    db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).delete()
     db.commit()
     
     # 2. Redirect back to the main list
@@ -699,7 +699,7 @@ def delete_program(id: int, db: Session = Depends(get_db)):
 
 @app.get("/programs/{id}/edit", response_class=HTMLResponse)
 def edit_program(id: int, request: Request, db: Session = Depends(get_db)):
-    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
     return templates.TemplateResponse("partials/program_editor.html", {"request": request, "program": prog})
 
 
@@ -710,7 +710,7 @@ def update_program_meta(
     template_id: int = Form(None), # Accept template_id
     db: Session = Depends(get_db)
 ):
-    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
     prog.name = name
     prog.template_id = template_id # Save
     db.commit()
@@ -720,7 +720,7 @@ def update_program_meta(
 @app.post("/programs/{id}/add_item")
 def add_program_item(id: int, request: Request, db: Session = Depends(get_db)):
     # Add blank row
-    new_item = ProgramItemModel(program_id=id, title="", subtitle="", sequence=999)
+    new_item = ServiceProgramItemModel(program_id=id, title="", subtitle="", sequence=999)
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
@@ -729,7 +729,7 @@ def add_program_item(id: int, request: Request, db: Session = Depends(get_db)):
 
 @app.post("/programs/item/{item_id}/update")
 def update_item(item_id: int, title: str = Form(""), subtitle: str = Form(""), tag: str = Form(""), db: Session = Depends(get_db)):
-    item = db.query(ProgramItemModel).filter(ProgramItemModel.id == item_id).first()
+    item = db.query(ServiceProgramItemModel).filter(ServiceProgramItemModel.id == item_id).first()
     item.title = title
     item.subtitle = subtitle
     item.tag = tag # Save Tag
@@ -739,7 +739,7 @@ def update_item(item_id: int, title: str = Form(""), subtitle: str = Form(""), t
 
 @app.delete("/programs/item/{item_id}")
 def delete_item(item_id: int, db: Session = Depends(get_db)):
-    db.query(ProgramItemModel).filter(ProgramItemModel.id == item_id).delete()
+    db.query(ServiceProgramItemModel).filter(ServiceProgramItemModel.id == item_id).delete()
     db.commit()
     return Response(status_code=200)
 
@@ -807,7 +807,7 @@ def replace_text_preserving_formatting(pptx_path, output_path, replacements):
 # --- DOWNLOAD ENDPOINT ---
 @app.get("/programs/{id}/download_ppt")
 def download_program_ppt(id: int, db: Session = Depends(get_db)):
-    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
     
     # Validation
     if not prog or not prog.template_id:
@@ -853,17 +853,17 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
 def activate_program(id: int, request: Request, db: Session = Depends(get_db)):
     """Sets the given program as the 'Active' one."""
     # 1. Deactivate all
-    db.query(ProgramModel).update({ProgramModel.is_active: False})
+    db.query(ServiceProgramModel).update({ServiceProgramModel.is_active: False})
     
     # 2. Activate target
-    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
     if prog:
         prog.is_active = True
         prog.last_used = datetime.now(timezone.utc)
         db.commit()
     
     # 3. Return ONLY the list partial (not the whole page)
-    programs = db.query(ProgramModel).order_by(ProgramModel.id.desc()).all()
+    programs = db.query(ServiceProgramModel).order_by(ServiceProgramModel.id.desc()).all()
     return templates.TemplateResponse("partials/program_list.html", {"request": request, "programs": programs})
 
 
@@ -877,7 +877,7 @@ def reorder_program_items(
     # Loop through the list of IDs. 
     # The index in the list becomes the new sequence number.
     for index, item_id in enumerate(item_ids):
-        item = db.query(ProgramItemModel).filter(ProgramItemModel.id == item_id).first()
+        item = db.query(ServiceProgramItemModel).filter(ServiceProgramItemModel.id == item_id).first()
         if item:
             item.sequence = index
             
@@ -925,7 +925,7 @@ def delete_template(id: int, db: Session = Depends(get_db)):
 @app.get("/api/program/{id}/json")
 def get_program_json(id: int, db: Session = Depends(get_db)):
     """Returns JSON for a specific program ID."""
-    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
     
     if not prog:
         return []
@@ -945,7 +945,7 @@ def get_program_json(id: int, db: Session = Depends(get_db)):
 @app.get("/api/program/current")
 def get_current_program_json(db: Session = Depends(get_db)):
     """Returns JSON for the currently ACTIVE program."""
-    prog = db.query(ProgramModel).filter(ProgramModel.is_active == True).first()
+    prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.is_active == True).first()
     # Use sequence first, then ID as fallback
     
     if not prog:
