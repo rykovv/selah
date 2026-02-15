@@ -116,13 +116,14 @@ class ServiceProgramModel(Base):
 
 class ServiceProgramItemModel(Base):
     __tablename__ = "program_items"
+
     id = Column(Integer, primary_key=True, index=True)
     program_id = Column(Integer, ForeignKey("programs.id"))
     sequence = Column(Integer)
     title = Column(String)     
     subtitle = Column(String)
-
     tag = Column(String) # PPT tag for dynamic replacement, e.g. {{offertory}}
+    is_muted = Column(Boolean, default=False) # If True, hide from vMix JSON
 
     program = relationship("ServiceProgramModel", back_populates="items")
 
@@ -246,7 +247,7 @@ def add_to_plan(hymn_id: int = Form(...), db: Session = Depends(get_db)):
     db.commit()
     
     # Reload the page to show the change
-    return RedirectResponse(url="/", status_code=303)
+    return RedirectResponse(url="/hymns", status_code=303)
 
 
 @app.delete("/plan/{item_id}")
@@ -920,6 +921,18 @@ def delete_template(id: int, db: Session = Depends(get_db)):
     return Response(status_code=200)
 
 
+@app.post("/programs/item/{item_id}/toggle_mute")
+def toggle_item_mute(item_id: int, request: Request, db: Session = Depends(get_db)):
+    item = db.query(ServiceProgramItemModel).filter(ServiceProgramItemModel.id == item_id).first()
+    if item:
+        # Toggle boolean
+        item.is_muted = not item.is_muted
+        db.commit()
+        
+    # Return the updated row HTML
+    return templates.TemplateResponse("partials/program_row.html", {"request": request, "item": item})
+
+
 # --- API ENDPOINTS (JSON for vMix) ---
 
 @app.get("/api/program/{id}/json")
@@ -935,12 +948,16 @@ def get_program_json(id: int, db: Session = Depends(get_db)):
     
     data = []
     for item in items:
+        if item.is_muted:
+            continue
+
         data.append({
             "title": item.title or "",
             "subtitle": item.subtitle or ""
         })
             
     return data
+
 
 @app.get("/api/program/current")
 def get_current_program_json(db: Session = Depends(get_db)):
@@ -955,6 +972,9 @@ def get_current_program_json(db: Session = Depends(get_db)):
     
     data = []
     for item in items:
+        if item.is_muted:
+            continue
+
         data.append({
             "title": item.title or "",
             "subtitle": item.subtitle or ""

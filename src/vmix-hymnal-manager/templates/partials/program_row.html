@@ -9,35 +9,56 @@
     </td>
 
     <td style="width: 32%;" class="p-2">
-        <textarea class="form-control border-0 bg-transparent fw-bold shadow-none auto-expand" rows="1" name="title"
-            placeholder="Event Title" hx-post="/programs/item/{{ item.id }}/update" hx-trigger="change"
-            hx-include="closest tr">{{ item.title or '' }}</textarea>
+        <textarea
+            class="form-control border-0 bg-transparent fw-bold shadow-none auto-expand {{ 'text-muted opacity-50 text-decoration-line-through' if item.is_muted else '' }}"
+            rows="1" name="title" placeholder="Event Title" hx-post="/programs/item/{{ item.id }}/update"
+            hx-trigger="change" hx-include="closest tr">{{ item.title or '' }}</textarea>
     </td>
 
     <td style="width: 32%;" class="p-2">
-        <textarea class="form-control border-0 bg-transparent shadow-none auto-expand" rows="1" name="subtitle"
-            placeholder="Description / Person" hx-post="/programs/item/{{ item.id }}/update" hx-trigger="change"
-            hx-include="closest tr">{{ item.subtitle or '' }}</textarea>
+        <textarea
+            class="form-control border-0 bg-transparent shadow-none auto-expand {{ 'text-muted opacity-50' if item.is_muted else '' }}"
+            rows="1" name="subtitle" placeholder="Description / Person" hx-post="/programs/item/{{ item.id }}/update"
+            hx-trigger="change" hx-include="closest tr">{{ item.subtitle or '' }}</textarea>
     </td>
 
     <td style="width: 25%;" class="p-2">
         <div class="input-group input-group-sm">
             <span class="input-group-text text-muted bg-light border-0 px-1">{{ "{" }}{{ "{" }}</span>
-
             <textarea
                 class="form-control form-control-sm border-0 bg-transparent px-0 font-monospace text-primary fw-bold shadow-none auto-expand"
                 rows="1" name="tag" placeholder="tag" style="resize: none; overflow: hidden;"
                 hx-post="/programs/item/{{ item.id }}/update" hx-trigger="change"
                 hx-include="closest tr">{{ item.tag or '' }}</textarea>
-
             <span class="input-group-text text-muted bg-light border-0 px-1">{{ "}" }}{{ "}" }}</span>
         </div>
     </td>
 
-    <td class="text-end align-middle p-2" style="width: 40px;">
-        <button class="btn btn-link text-danger p-0 opacity-50 hover-opacity-100" title="Remove Item"
-            hx-delete="/programs/item/{{ item.id }}" hx-target="#row-{{ item.id }}" hx-swap="outerHTML">
-            &times;
-        </button>
+    <td class="text-end align-middle p-2" style="width: 80px;">
+        <div class="d-flex gap-2 justify-content-end">
+
+            <button class="btn btn-sm p-0 {{ 'text-danger' if item.is_muted else 'text-success' }}"
+                title="{{ 'Currently hidden from vMix and seen in PPT only' if item.is_muted else 'Visible in vMix and PPT' }}"
+                hx-post="/programs/item/{{ item.id }}/toggle_mute" hx-target="#row-{{ item.id }}" hx-swap="outerHTML">
+                {% if item.is_muted %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-broadcast-pin" viewBox="0 0 16 16">
+                    <path
+                        d="M3.05 3.05a7 7 0 0 0 0 9.9.5.5 0 0 1-.707.707 8 8 0 0 1 0-11.314.5.5 0 0 1 .707.707zm2.122 2.122a4 4 0 0 0 0 5.656.5.5 0 1 1-.708.708 5 5 0 0 1 0-7.072.5.5 0 0 1 .708.708zm5.656-.708a.5.5 0 0 1 .708 0 5 5 0 0 1 0 7.072.5.5 0 1 1-.708-.708 4 4 0 0 0 0-5.656.5.5 0 0 1 0-.708zm2.122-2.12a.5.5 0 0 1 .707 0 8 8 0 0 1 0 11.313.5.5 0 0 1-.707-.707 7 7 0 0 0 0-9.9.5.5 0 0 1 0-.707zM10 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
+                </svg>
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-broadcast" viewBox="0 0 16 16">
+                    <path
+                        d="M3.05 3.05a7 7 0 0 0 0 9.9.5.5 0 0 1-.707.707 8 8 0 0 1 0-11.314.5.5 0 0 1 .707.707zm2.122 2.122a4 4 0 0 0 0 5.656.5.5 0 1 1-.708.708 5 5 0 0 1 0-7.072.5.5 0 0 1 .708.708zm5.656-.708a.5.5 0 0 1 .708 0 5 5 0 0 1 0 7.072.5.5 0 1 1-.708-.708 4 4 0 0 0 0-5.656.5.5 0 0 1 0-.708zm2.122-2.12a.5.5 0 0 1 .707 0 8 8 0 0 1 0 11.313.5.5 0 0 1-.707-.707 7 7 0 0 0 0-9.9.5.5 0 0 1 0-.707zM10 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
+                </svg>
+                {% endif %}
+            </button>
+
+            <button class="btn btn-link text-danger p-0 opacity-50 hover-opacity-100" title="Remove Item"
+                hx-delete="/programs/item/{{ item.id }}" hx-target="#row-{{ item.id }}" hx-swap="outerHTML">
+                &times;
+            </button>
+        </div>
     </td>
 </tr>
