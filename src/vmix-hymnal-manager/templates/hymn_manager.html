@@ -8,7 +8,12 @@
             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="mb-0">This Sabbath's Service</h5>
-                    <small style="opacity: 0.8;">Auto-syncs to vMix</small>
+                    <small style="opacity: 0.8;">
+                        <a href="/api/vmix" target="_blank" class="btn btn-xs btn-outline-light"
+                            style="font-size: 0.7rem; padding: 2px 6px;" title="vMix JSON Source">
+                            vMix Live Feed
+                        </a>
+                    </small>
                 </div>
 
                 <button type="button" class="btn btn-light btn-sm fw-bold text-success shadow-sm" data-bs-toggle="modal"
@@ -65,14 +70,18 @@
 
 
     <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Lyric Preview</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="preview-content">
-                    <div class="text-center text-muted mt-5">Loading...</div>
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

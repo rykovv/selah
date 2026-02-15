@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Service Plans</h2>
+            <p class="text-muted">Manage your orders of service.</p>
+        </div>
+        <form action="/programs/new" method="post">
+            <button type="submit" class="btn btn-primary shadow-sm">
+                + New Service Program
+            </button>
+        </form>
+        <a href="/api/program/current" target="_blank"
+            class="btn btn-outline-dark shadow-sm d-flex align-items-center gap-2">
+            vMix Live Feed
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0">
+            <div class="list-group list-group-flush" id="program-list">
+                {% include "partials/program_list.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

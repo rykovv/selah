@@ -1,0 +1,25 @@
+<tr id="row-{{ item.id }}" data-id="{{ item.id }}">
+    <td class="text-center text-muted handle" style="cursor: grab;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical"
+            viewBox="0 0 16 16">
+            <path
+                d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 14a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" />
+        </svg>
+    </td>
+    <td>
+        <input type="text" class="form-control border-0 bg-transparent" name="title" value="{{ item.title or '' }}"
+            placeholder="e.g. Welcome" hx-post="/programs/item/{{ item.id }}/update" hx-trigger="change"
+            hx-include="closest tr">
+    </td>
+    <td>
+        <input type="text" class="form-control border-0 bg-transparent" name="subtitle"
+            value="{{ item.subtitle or '' }}" placeholder="e.g. John Doe" hx-post="/programs/item/{{ item.id }}/update"
+            hx-trigger="change" hx-include="closest tr">
+    </td>
+    <td>
+        <button class="btn btn-link text-danger p-0" hx-delete="/programs/item/{{ item.id }}"
+            hx-target="#row-{{ item.id }}" hx-swap="outerHTML">
+            &times;
+        </button>
+    </td>
+</tr>

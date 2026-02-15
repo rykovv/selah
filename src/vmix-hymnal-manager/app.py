@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, Boolean
 from sqlalchemy.orm import sessionmaker, Session, relationship, declarative_base
 from sqlalchemy import or_
 
@@ -95,6 +95,30 @@ class ServicePlanModel(Base):
     
     # We fetch the hymn details when we load the plan
     hymn = relationship("HymnModel", back_populates="service_plans")
+
+
+class ProgramModel(Base):
+    __tablename__ = "programs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String) # e.g. "Divine Service", "Vespers"
+    is_active = Column(Boolean, default=False)
+    
+    # Relationships
+    items = relationship("ProgramItemModel", back_populates="program", cascade="all, delete-orphan")
+
+
+class ProgramItemModel(Base):
+    __tablename__ = "program_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    program_id = Column(Integer, ForeignKey("programs.id"))
+    
+    sequence = Column(Integer) # Order in the list
+    title = Column(String)     # e.g. "Welcome", "Scripture"
+    subtitle = Column(String)  # e.g. "John Doe", "Psalm 23"
+    
+    program = relationship("ProgramModel", back_populates="items")
 
 # --- 3. The vMix Transformation Logic ---
 
@@ -194,13 +218,36 @@ def seed_database(db: Session = Depends(get_db)):
 
 @app.get("/", response_class=HTMLResponse)
 def read_dashboard(request: Request, db: Session = Depends(get_db)):
-    """Render the main dashboard."""
+    """The new Main Dashboard: Active Program + Service Plan"""
+    
+    # 1. Get Active Program
+    active_prog = db.query(ProgramModel).filter(ProgramModel.is_active == True).first()
+    if active_prog:
+        # Sort items
+        active_prog.items.sort(key=lambda x: (x.sequence if x.sequence is not None else 9999, x.id))
+
+    # 2. Get Hymn Service Plan
+    plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request, 
+        "program": active_prog,
+        "service_plan": plan
+    })
+
+# --- HYMN MANAGER (Formerly Index) ---
+@app.get("/hymns", response_class=HTMLResponse)
+def page_hymns_manager(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """The Hymn Selection Interface (Old Dashboard)"""
     # 1. Get the current plan
     plan = db.query(ServicePlanModel).order_by(ServicePlanModel.sequence).all()
     # 2. Get the full library (Simple version: fetch all)
     library = db.query(HymnModel).order_by(HymnModel.number).all()
     
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse("hymn_manager.html", {
         "request": request,
         "plan": plan,
         "library": library
@@ -622,11 +669,178 @@ def download_ppt(
     output.seek(0)
     filename = f"Sabbath_Service_{aspect.replace(':','')}.pptx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    
+
     return StreamingResponse(
         output, headers=headers, 
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
+
+
+@app.get("/programs", response_class=HTMLResponse)
+def page_programs(request: Request, db: Session = Depends(get_db)):
+    programs = db.query(ProgramModel).order_by(ProgramModel.id.desc()).all()
+    return templates.TemplateResponse("programs.html", {"request": request, "programs": programs})
+
+
+@app.post("/programs/new")
+def new_program(db: Session = Depends(get_db)):
+    # Create blank program with default name
+    # We removed the date logic here
+    new_prog = ProgramModel(name="New Service Program", is_active=False)
+    
+    db.add(new_prog)
+    db.commit()
+    db.refresh(new_prog)
+    
+    return RedirectResponse(f"/programs/{new_prog.id}", status_code=303)
+
+
+# 3. THE NEW EDITOR PAGE (Full Screen)
+@app.get("/programs/{id}", response_class=HTMLResponse)
+def program_editor_page(id: int, request: Request, db: Session = Depends(get_db)):
+    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    
+    if not prog:
+        return RedirectResponse("/programs")
+    
+    # CRITICAL: Sort items before sending to template
+    # 1. Primary Sort: 'sequence' (Low numbers first)
+    # 2. Secondary Sort: 'id' (Created earlier first, as tie-breaker)
+    # We use 9999 as a fallback if sequence is None to put unsorted items at the end
+    prog.items.sort(key=lambda x: (x.sequence if x.sequence is not None else 9999, x.id))
+        
+    return templates.TemplateResponse("program_editor.html", {"request": request, "program": prog})
+
+
+@app.delete("/programs/{id}")
+def delete_program(id: int, db: Session = Depends(get_db)):
+    """Deletes the entire program and redirects to the main list."""
+    
+    # 1. Delete the program (Cascades to items automatically if configured, 
+    #    but standard SQLAlchemy delete usually handles it if relationships are set correctly)
+    db.query(ProgramModel).filter(ProgramModel.id == id).delete()
+    db.commit()
+    
+    # 2. Redirect back to the main list
+    # HTMX will follow this 303 redirect and replace the body with the list page
+    return RedirectResponse("/programs", status_code=303)
+
+
+@app.get("/programs/{id}/edit", response_class=HTMLResponse)
+def edit_program(id: int, request: Request, db: Session = Depends(get_db)):
+    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    return templates.TemplateResponse("partials/program_editor.html", {"request": request, "program": prog})
+
+@app.post("/programs/{id}/update_meta")
+def update_program_meta(id: int, name: str = Form(...), db: Session = Depends(get_db)):
+    # Removed 'date' parameter from function signature
+    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    prog.name = name
+    # Removed prog.date = date
+    db.commit()
+    return Response(status_code=200)
+
+@app.post("/programs/{id}/add_item")
+def add_program_item(id: int, request: Request, db: Session = Depends(get_db)):
+    # Add blank row
+    new_item = ProgramItemModel(program_id=id, title="", subtitle="", sequence=999)
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
+    return templates.TemplateResponse("partials/program_row.html", {"request": request, "item": new_item})
+
+@app.post("/programs/item/{item_id}/update")
+def update_item(item_id: int, title: str = Form(""), subtitle: str = Form(""), db: Session = Depends(get_db)):
+    item = db.query(ProgramItemModel).filter(ProgramItemModel.id == item_id).first()
+    item.title = title
+    item.subtitle = subtitle
+    db.commit()
+    return Response(status_code=200)
+
+@app.delete("/programs/item/{item_id}")
+def delete_item(item_id: int, db: Session = Depends(get_db)):
+    db.query(ProgramItemModel).filter(ProgramItemModel.id == item_id).delete()
+    db.commit()
+    return Response(status_code=200)
+
+# --- VMIX ENDPOINT ---
+
+@app.post("/programs/{id}/activate")
+def activate_program(id: int, request: Request, db: Session = Depends(get_db)):
+    """Sets the given program as the 'Active' one."""
+    # 1. Deactivate all
+    db.query(ProgramModel).update({ProgramModel.is_active: False})
+    
+    # 2. Activate target
+    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    if prog:
+        prog.is_active = True
+        db.commit()
+    
+    # 3. Return ONLY the list partial (not the whole page)
+    programs = db.query(ProgramModel).order_by(ProgramModel.id.desc()).all()
+    return templates.TemplateResponse("partials/program_list.html", {"request": request, "programs": programs})
+
+
+@app.post("/programs/{id}/reorder")
+def reorder_program_items(
+    id: int, 
+    item_ids: List[int] = Form(...), # Receives list: item_ids=1&item_ids=5...
+    db: Session = Depends(get_db)
+):
+    """Updates the sequence of items based on the received list order."""
+    # Loop through the list of IDs. 
+    # The index in the list becomes the new sequence number.
+    for index, item_id in enumerate(item_ids):
+        item = db.query(ProgramItemModel).filter(ProgramItemModel.id == item_id).first()
+        if item:
+            item.sequence = index
+            
+    db.commit()
+    return Response(status_code=200)
+
+
+# --- API ENDPOINTS (JSON for vMix) ---
+
+@app.get("/api/program/{id}/json")
+def get_program_json(id: int, db: Session = Depends(get_db)):
+    """Returns JSON for a specific program ID."""
+    prog = db.query(ProgramModel).filter(ProgramModel.id == id).first()
+    
+    if not prog:
+        return []
+
+    # Sort items by sequence (if available) or ID
+    items = sorted(prog.items, key=lambda x: (x.sequence if x.sequence is not None else 9999, x.id))
+    
+    data = []
+    for item in items:
+        data.append({
+            "title": item.title or "",
+            "subtitle": item.subtitle or ""
+        })
+            
+    return data
+
+@app.get("/api/program/current")
+def get_current_program_json(db: Session = Depends(get_db)):
+    """Returns JSON for the currently ACTIVE program."""
+    prog = db.query(ProgramModel).filter(ProgramModel.is_active == True).first()
+    # Use sequence first, then ID as fallback
+    
+    if not prog:
+        return [{"title": "No Active Program", "subtitle": "Select one in Dashboard"}]
+
+    items = sorted(prog.items, key=lambda x: (x.sequence if x.sequence is not None else 9999, x.id))
+    
+    data = []
+    for item in items:
+        data.append({
+            "title": item.title or "",
+            "subtitle": item.subtitle or ""
+        })
+            
+    return data
 
 
 if __name__ == "__main__":
