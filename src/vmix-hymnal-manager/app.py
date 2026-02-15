@@ -929,7 +929,14 @@ def delete_slides_with_pattern(prs, pattern):
 
 # --- DOWNLOAD ENDPOINT ---
 @app.get("/programs/{id}/download_ppt")
-def download_program_ppt(id: int, db: Session = Depends(get_db)):
+def download_program_ppt(
+    id: int,
+    font_select: str = "Arial",
+    font_manual: str = None,
+    title_size: int = 80,
+    lyrics_size: int = 60,
+    db: Session = Depends(get_db),
+):
     prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
     
     if not prog or not prog.template_id:
@@ -944,6 +951,8 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
         return Response("Template file missing on disk.", status_code=404)
 
     prs = Presentation(input_path)
+
+    selected_font = font_manual if font_select == "Manual" and font_manual else font_select
     
     # --- PHASE 1: STANDARD REPLACEMENTS ---
     replacements = {}
@@ -1010,7 +1019,7 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
 
         insertion_index = i
         
-        for extra_chunk in content_chunks:
+        for idx, extra_chunk in enumerate(content_chunks):
             # Duplicate the Original Template (which still has the {{hymn_x}} tag)
             new_slide = duplicate_slide(prs, i)
             
@@ -1019,10 +1028,35 @@ def download_program_ppt(id: int, db: Session = Depends(get_db)):
             move_slide(prs, len(prs.slides)-1, insertion_index + 1)
             
             # Replace the tag in the NEW slide
-            for s in new_slide.shapes:
-                if s.has_text_frame:
-                    for p in s.text_frame.paragraphs:
-                        p.text = p.text.replace(p.text, clean_text(extra_chunk))
+            if idx == 0:
+                for s in new_slide.shapes:
+                    if s.has_text_frame:
+                        p_element = s.text_frame.paragraphs[0]._p
+                        p_element.getparent().remove(p_element)
+
+                        p1 = s.text_frame.add_paragraph()
+                        # Paragraph 1: Hymn Number
+                        p1.text = extra_chunk.splitlines()[0].strip()
+                        p1.font.name = selected_font
+                        p1.font.size = Pt(int(title_size * 0.5))
+                        p1.font.bold = False
+                        p1.alignment = PP_ALIGN.CENTER
+                            
+                        # Paragraph 2: Title
+                        p2 = s.text_frame.add_paragraph()
+                        p2.text = "\n".join(extra_chunk.splitlines()[1:]).strip()
+                        p2.font.name = selected_font
+                        p2.font.size = Pt(title_size)
+                        p2.font.bold = True
+                        p2.alignment = PP_ALIGN.CENTER
+
+            else:
+                for s in new_slide.shapes:
+                    if s.has_text_frame:
+                        for p in s.text_frame.paragraphs:
+                            p.text = p.text.replace(p.text, clean_text(extra_chunk))
+                            p.font.name = selected_font
+                            p.font.size = Pt(lyrics_size)
             
             insertion_index += 1 
 
