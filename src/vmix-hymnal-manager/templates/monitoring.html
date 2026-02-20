@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="cm-page-header">
+    <div>
+        <h2>
+            <i class="bi bi-graph-up" style="color: var(--cm-emerald);"></i>
+            Monitoring
+        </h2>
+        <p class="cm-page-desc">Live request rates for the vMix and program API feeds.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- /api/vmix -->
+    <div class="col-md-6">
+        <div class="cm-card">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-indigo">
+                        <i class="bi bi-broadcast"></i>
+                    </span>
+                    /api/vmix
+                </h5>
+                <span class="cm-pill cm-pill-primary" id="vmix-rps-badge">0.00 req/s</span>
+            </div>
+            <div style="padding: 1rem; height: 260px;">
+                <canvas id="vmixChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- /api/program/current -->
+    <div class="col-md-6">
+        <div class="cm-card">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-emerald">
+                        <i class="bi bi-calendar3"></i>
+                    </span>
+                    /api/program/current
+                </h5>
+                <span class="cm-pill cm-pill-success" id="program-rps-badge">0.00 req/s</span>
+            </div>
+            <div style="padding: 1rem; height: 260px;">
+                <canvas id="programChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+(function () {
+    var MAX_POINTS = 60;
+
+    function isDark() {
+        return document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    }
+
+    function chartColors(hue) {
+        if (hue === 'indigo') {
+            return {
+                border: isDark() ? '#818cf8' : '#4f46e5',
+                bg:     isDark() ? 'rgba(129,140,248,0.12)' : 'rgba(79,70,229,0.10)'
+            };
+        }
+        return {
+            border: isDark() ? '#34d399' : '#059669',
+            bg:     isDark() ? 'rgba(52,211,153,0.12)' : 'rgba(5,150,105,0.10)'
+        };
+    }
+
+    function gridColor() {
+        return isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    }
+
+    function textColor() {
+        return isDark() ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)';
+    }
+
+    /* Initial empty labels */
+    var labels = [];
+    for (var i = MAX_POINTS; i > 0; i--) {
+        labels.push('-' + i + 's');
+    }
+
+    function makeChart(canvasId, hue) {
+        var c = chartColors(hue);
+        var ctx = document.getElementById(canvasId).getContext('2d');
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels.slice(),
+                datasets: [{
+                    label: 'req/s',
+                    data: new Array(MAX_POINTS).fill(null),
+                    borderColor: c.border,
+                    backgroundColor: c.bg,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHitRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                interaction: { intersect: false, mode: 'index' },
+                scales: {
+                    x: {
+                        grid: { color: gridColor() },
+                        ticks: { color: textColor(), font: { size: 10 }, maxTicksLimit: 10 }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: gridColor() },
+                        ticks: { color: textColor(), font: { size: 10 } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    var vmixChart    = makeChart('vmixChart', 'indigo');
+    var programChart = makeChart('programChart', 'emerald');
+
+    function pushPoint(chart, value) {
+        var ds = chart.data.datasets[0].data;
+        ds.push(value);
+        if (ds.length > MAX_POINTS) ds.shift();
+
+        var lbl = chart.data.labels;
+        lbl.push('now');
+        if (lbl.length > MAX_POINTS) lbl.shift();
+
+        for (var i = 0; i < lbl.length; i++) {
+            var ago = lbl.length - 1 - i;
+            lbl[i] = ago === 0 ? 'now' : '-' + ago + 's';
+        }
+        chart.update('none');
+    }
+
+    function poll() {
+        fetch('/api/monitoring/stats')
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                pushPoint(vmixChart, data.vmix_rps);
+                pushPoint(programChart, data.program_rps);
+
+                document.getElementById('vmix-rps-badge').textContent =
+                    data.vmix_rps.toFixed(2) + ' req/s';
+                document.getElementById('program-rps-badge').textContent =
+                    data.program_rps.toFixed(2) + ' req/s';
+            })
+            .catch(function () { /* ignore transient errors */ });
+    }
+
+    setInterval(poll, 1000);
+    poll();
+
+    /* Re-apply chart colours on theme toggle */
+    document.getElementById('cm-theme-toggle').addEventListener('click', function () {
+        setTimeout(function () {
+            updateChartTheme(vmixChart, 'indigo');
+            updateChartTheme(programChart, 'emerald');
+        }, 50);
+    });
+
+    function updateChartTheme(chart, hue) {
+        var c = chartColors(hue);
+        chart.data.datasets[0].borderColor = c.border;
+        chart.data.datasets[0].backgroundColor = c.bg;
+        chart.options.scales.x.grid.color = gridColor();
+        chart.options.scales.y.grid.color = gridColor();
+        chart.options.scales.x.ticks.color = textColor();
+        chart.options.scales.y.ticks.color = textColor();
+        chart.update();
+    }
+})();
+</script>
+
+{% endblock %}
