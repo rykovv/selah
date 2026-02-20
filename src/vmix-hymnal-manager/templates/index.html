@@ -1,153 +1,145 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row g-4">
+<div class="row g-4">
 
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100 border-0">
-                <div class="card-header bg-success text-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="m-0 d-flex align-items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
-                            class="bi bi-broadcast me-2" viewBox="0 0 16 16">
-                            <path
-                                d="M3.05 3.05a7 7 0 0 0 0 9.9.5.5 0 0 1-.707.707 8 8 0 0 1 0-11.314.5.5 0 0 1 .707.707zm2.122 2.122a4 4 0 0 0 0 5.656.5.5 0 1 1-.708.708 5 5 0 0 1 0-7.072.5.5 0 0 1 .708.708zm5.656-.708a.5.5 0 0 1 .708 0 5 5 0 0 1 0 7.072.5.5 0 1 1-.708-.708 4 4 0 0 0 0-5.656.5.5 0 0 1 0-.708zm2.122-2.12a.5.5 0 0 1 .707 0 8 8 0 0 1 0 11.313.5.5 0 0 1-.707-.707 7 7 0 0 0 0-9.9.5.5 0 0 1 0-.707zM10 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
-                        </svg>
-                        Service Program
-                    </h5>
+    <!-- ── Service Program Card ── -->
+    <div class="col-md-6">
+        <div class="cm-card h-100 d-flex flex-column">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-emerald">
+                        <i class="bi bi-broadcast"></i>
+                    </span>
+                    Service Program
+                </h5>
 
-                    <div class="d-flex align-items-center gap-2">
-                        {% if program %}
-                        <span class="badge bg-white text-success">{{ program.name }}</span>
+                <div class="d-flex align-items-center gap-2">
+                    {% if program %}
+                        <span class="cm-pill cm-pill-success">{{ program.name }}</span>
 
                         {% if program.template_id %}
-                        <button type="button"
-                            class="btn btn-sm btn-light text-success fw-bold d-flex align-items-center gap-1"
+                        <button type="button" class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
                             data-bs-toggle="modal" data-bs-target="#programPptSettingsModal"
                             title="Download Service PPT">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                class="bi bi-file-earmark-slides-fill" viewBox="0 0 16 16">
-                                <path
-                                    d="M5.5 9a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 2a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5z" />
-                                <path
-                                    d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm10-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z" />
-                            </svg>
+                            <i class="bi bi-file-earmark-slides"></i>
                             PPT
                         </button>
                         {% endif %}
-                        {% else %}
-                        <span class="badge bg-danger">OFFLINE</span>
-                        {% endif %}
-                    </div>
+                    {% else %}
+                        <span class="cm-pill cm-pill-danger">OFFLINE</span>
+                    {% endif %}
                 </div>
+            </div>
 
-                <div class="card-body p-0 overflow-auto" style="max-height: 70vh;">
-                    {% if program %}
-                    <div class="list-group list-group-flush">
+            <div class="flex-grow-1 overflow-auto" style="max-height: 72vh;">
+                {% if program %}
+                    <div>
+                        {% set ns = namespace(n=0) %}
                         {% for item in program.items %}
                         {% if not item.is_muted %}
-                        <div class="list-group-item px-4 py-3">
-                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                <h6 class="mb-0 text-dark">{{ item.title }}</h6>
-                                <small class="text-muted">#{{ loop.index }}</small>
+                        {% set ns.n = ns.n + 1 %}
+                        <div class="cm-list-item">
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold text-truncate" style="font-size: 0.9rem;">{{ item.title }}</div>
+                                {% if item.subtitle %}
+                                <div class="text-secondary mt-0" style="font-size: 0.8125rem;">{{ item.subtitle }}</div>
+                                {% endif %}
                             </div>
-                            <p class="mb-0 fw-bold text-dark">{{ item.subtitle }}</p>
+                            <span class="cm-pill cm-pill-muted">{{ ns.n }}</span>
                         </div>
                         {% endif %}
                         {% endfor %}
                     </div>
-                    {% else %}
-                    <div class="text-center p-5 text-muted">
-                        <p>No Active Program Selected.</p>
-                        <a href="/programs" class="btn btn-outline-success btn-sm">Go to Programs</a>
+                {% else %}
+                    <div class="cm-empty">
+                        <i class="bi bi-broadcast-pin cm-empty-icon"></i>
+                        <p>No active program selected.</p>
+                        <a href="/programs" class="btn btn-sm btn-outline-success">Go to Programs</a>
                     </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Selected Hymns Card ── -->
+    <div class="col-md-6">
+        <div class="cm-card h-100 d-flex flex-column">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-indigo">
+                        <i class="bi bi-music-note-list"></i>
+                    </span>
+                    Selected Hymns
+                </h5>
+
+                <div class="d-flex align-items-center gap-2">
+                    <span class="cm-pill cm-pill-primary">{{ service_plan|length }} Hymns</span>
+
+                    {% if service_plan %}
+                    <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                        data-bs-toggle="modal" data-bs-target="#hymnSettingsModal"
+                        title="Generate Hymns PPT">
+                        <i class="bi bi-file-earmark-slides"></i>
+                        PPT
+                    </button>
                     {% endif %}
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100 border-0">
-                <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="m-0 d-flex align-items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
-                            class="bi bi-music-note-list me-2" viewBox="0 0 16 16">
-                            <path d="M12 13c0 1.105-1.12 2-2.5 2S7 14.105 7 13s1.12-2 2.5-2 2.5.895 2.5 2z" />
-                            <path fill-rule="evenodd" d="M12 3v10h-1V3h1z" />
-                            <path d="M11 2.82a1 1 0 0 1 .804-.98l3-.6A1 1 0 0 1 16 2.22V4l-5 1V2.82z" />
-                            <path fill-rule="evenodd"
-                                d="M0 11.5a.5.5 0 0 1 .5-.5H4a.5.5 0 0 1 0 1H.5a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 .5 7H8a.5.5 0 0 1 0 1H.5a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 .5 3H8a.5.5 0 0 1 0 1H.5a.5.5 0 0 1-.5-.5z" />
-                        </svg>
-                        Selected Hymns
-                    </h5>
-
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-white text-primary">{{ service_plan|length }} Hymns</span>
-
-                        {% if service_plan %}
-                        <button type="button"
-                            class="btn btn-sm btn-light text-primary fw-bold d-flex align-items-center gap-1"
-                            data-bs-toggle="modal" data-bs-target="#hymnSettingsModal" title="Generate Hymns PPT">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                class="bi bi-file-earmark-slides-fill" viewBox="0 0 16 16">
-                                <path
-                                    d="M5.5 9a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 2a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5z" />
-                                <path
-                                    d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm10-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z" />
-                            </svg>
-                            PPT
-                        </button>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="card-body p-0 overflow-auto" style="max-height: 70vh;">
-                    {% if service_plan %}
-                    <div class="list-group list-group-flush">
+            <div class="flex-grow-1 overflow-auto" style="max-height: 72vh;">
+                {% if service_plan %}
+                    <div>
                         {% for item in service_plan %}
-                        <div class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="mb-0 text-dark">{{ item.hymn.number }}. {{ item.hymn.title }}</h5>
+                        <div class="cm-list-item">
+                            <div class="flex-grow-1 min-w-0">
+                                <span class="fw-semibold" style="font-size: 0.9rem;">
+                                    {{ item.hymn.number }}. {{ item.hymn.title }}
+                                </span>
                             </div>
-                            <button class="btn btn-sm btn-outline-secondary" hx-get="/hymns/{{ item.hymn.id }}/preview"
-                                hx-target="#dashboard-preview-body" data-bs-toggle="modal"
+                            <button class="btn btn-sm btn-outline-secondary"
+                                hx-get="/hymns/{{ item.hymn.id }}/preview"
+                                hx-target="#dashboard-preview-body"
+                                data-bs-toggle="modal"
                                 data-bs-target="#dashboardPreviewModal">
-                                View
+                                <i class="bi bi-eye me-1"></i>View
                             </button>
                         </div>
                         {% endfor %}
                     </div>
-                    {% else %}
-                    <div class="text-center p-5 text-muted">
+                {% else %}
+                    <div class="cm-empty">
+                        <i class="bi bi-music-note-beamed cm-empty-icon"></i>
                         <p>No hymns selected for today.</p>
-                        <a href="/hymns" class="btn btn-outline-primary btn-sm">Select Hymns</a>
+                        <a href="/hymns" class="btn btn-sm btn-outline-primary">Select Hymns</a>
                     </div>
-                    {% endif %}
-                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+<!-- ── Program PPT Settings Modal ── -->
 <div class="modal fade" id="programPptSettingsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">Service Program PPT Settings</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                    aria-label="Close"></button>
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="cm-chip cm-chip-emerald"><i class="bi bi-file-earmark-slides"></i></span>
+                    <h5 class="modal-title fw-semibold mb-0">Service Program PPT Settings</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <form action="/programs/{{ program.id if program else 0 }}/download_ppt" method="get" target="_blank">
                 <div class="modal-body">
-                    <div class="alert alert-light border small text-muted">
-                        <i class="bi bi-info-circle-fill me-1"></i>
-                        These settings apply to <strong>Hymn Slides only</strong>.
-                        Other slides are determined by the template.
+                    <div class="alert alert-secondary d-flex gap-2 align-items-start py-2 px-3 mb-4" style="font-size:0.82rem;">
+                        <i class="bi bi-info-circle-fill mt-1 flex-shrink-0"></i>
+                        <span>These settings apply to <strong>Hymn Slides only</strong>. Other slides are determined by the template.</span>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Font Family</label>
+                        <label class="form-label fw-semibold small">Font Family</label>
                         <select class="form-select" name="font_select" onchange="toggleManualFont(this, 'progManual')">
                             <option value="Arial" selected>Arial (Universal)</option>
                             <option value="Calibri">Calibri (Modern)</option>
@@ -155,28 +147,29 @@
                             <option value="Verdana">Verdana (Wide)</option>
                             <option value="Tahoma">Tahoma</option>
                             <option value="Century Gothic">Century Gothic</option>
-                            <option value="Manual">Manual input...</option>
+                            <option value="Manual">Manual input…</option>
                         </select>
                         <input type="text" class="form-control mt-2 d-none" name="font_manual" id="progManual"
-                            placeholder="Font name...">
+                            placeholder="Font name…">
                     </div>
 
                     <div class="row g-3">
                         <div class="col-6">
-                            <label class="form-label fw-bold">Title Size (pt)</label>
+                            <label class="form-label fw-semibold small">Title Size (pt)</label>
                             <input type="number" class="form-control" name="title_size" value="80" min="20" max="200">
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-bold">Lyrics Size (pt)</label>
+                            <label class="form-label fw-semibold small">Lyrics Size (pt)</label>
                             <input type="number" class="form-control" name="lyrics_size" value="60" min="20" max="200">
                         </div>
                     </div>
                 </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success"
+                    <button type="submit" class="btn btn-success d-flex align-items-center gap-2"
                         onclick="bootstrap.Modal.getInstance(document.getElementById('programPptSettingsModal')).hide();">
-                        Download
+                        <i class="bi bi-download"></i> Download
                     </button>
                 </div>
             </form>
@@ -184,35 +177,36 @@
     </div>
 </div>
 
+<!-- ── Hymns PPT Settings Modal ── -->
 <div class="modal fade" id="hymnSettingsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Hymns PPT Settings</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                    aria-label="Close"></button>
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="cm-chip cm-chip-indigo"><i class="bi bi-file-earmark-slides"></i></span>
+                    <h5 class="modal-title fw-semibold mb-0">Hymns PPT Settings</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <form action="/service_plan/download_ppt_custom" method="get" target="_blank">
                 <div class="modal-body">
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Aspect Ratio</label>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Aspect Ratio</label>
                         <div class="d-flex gap-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="aspect" id="aspect43" value="4:3"
-                                    checked>
-                                <label class="form-check-label" for="aspect43">Standard (4:3)</label>
+                                <input class="form-check-input" type="radio" name="aspect" id="aspect43dash" value="4:3" checked>
+                                <label class="form-check-label" for="aspect43dash">Standard (4:3)</label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="aspect" id="aspect169" value="16:9">
-                                <label class="form-check-label" for="aspect169">Widescreen (16:9)</label>
+                                <input class="form-check-input" type="radio" name="aspect" id="aspect169dash" value="16:9">
+                                <label class="form-check-label" for="aspect169dash">Widescreen (16:9)</label>
                             </div>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Font Family</label>
+                        <label class="form-label fw-semibold small">Font Family</label>
                         <select class="form-select" name="font_select" onchange="toggleManualFont(this, 'hymnManual')">
                             <option value="Arial" selected>Arial (Universal)</option>
                             <option value="Calibri">Calibri (Modern)</option>
@@ -220,29 +214,29 @@
                             <option value="Verdana">Verdana (Wide)</option>
                             <option value="Tahoma">Tahoma</option>
                             <option value="Century Gothic">Century Gothic</option>
-                            <option value="Manual">Manual input...</option>
+                            <option value="Manual">Manual input…</option>
                         </select>
                         <input type="text" class="form-control mt-2 d-none" name="font_manual" id="hymnManual"
-                            placeholder="Font name...">
+                            placeholder="Font name…">
                     </div>
 
                     <div class="row g-3">
                         <div class="col-6">
-                            <label class="form-label fw-bold">Title Size (pt)</label>
+                            <label class="form-label fw-semibold small">Title Size (pt)</label>
                             <input type="number" class="form-control" name="title_size" value="80" min="20" max="200">
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-bold">Lyrics Size (pt)</label>
+                            <label class="form-label fw-semibold small">Lyrics Size (pt)</label>
                             <input type="number" class="form-control" name="lyrics_size" value="60" min="20" max="200">
                         </div>
                     </div>
-
                 </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"
+                    <button type="submit" class="btn btn-primary d-flex align-items-center gap-2"
                         onclick="bootstrap.Modal.getInstance(document.getElementById('hymnSettingsModal')).hide();">
-                        Download
+                        <i class="bi bi-download"></i> Download
                     </button>
                 </div>
             </form>
@@ -250,17 +244,18 @@
     </div>
 </div>
 
+<!-- ── Hymn Preview Modal ── -->
 <div class="modal fade" id="dashboardPreviewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Hymn Preview</h5>
+                <h5 class="modal-title fw-semibold">Hymn Preview</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="dashboard-preview-body">
-                <div class="text-center py-5">
+                <div class="d-flex justify-content-center py-5">
                     <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                        <span class="visually-hidden">Loading…</span>
                     </div>
                 </div>
             </div>
@@ -273,14 +268,14 @@
 
 <script>
     function toggleManualFont(select, inputId) {
-        const manualInput = document.getElementById(inputId);
+        var el = document.getElementById(inputId);
         if (select.value === 'Manual') {
-            manualInput.classList.remove('d-none');
-            manualInput.required = true;
-            manualInput.focus();
+            el.classList.remove('d-none');
+            el.required = true;
+            el.focus();
         } else {
-            manualInput.classList.add('d-none');
-            manualInput.required = false;
+            el.classList.add('d-none');
+            el.required = false;
         }
     }
 </script>

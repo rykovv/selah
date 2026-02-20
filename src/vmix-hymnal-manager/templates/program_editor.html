@@ -1,75 +1,91 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container py-4" style="max-width: 900px;">
+<div style="max-width: 920px;">
 
+    <!-- ── Back + Meta ── -->
     <div class="mb-4">
-        <a href="/programs" class="text-decoration-none text-muted mb-2 d-inline-block">
-            &larr; Back to All Plans
+        <a href="/programs" class="text-decoration-none text-secondary d-inline-flex align-items-center gap-1 mb-3 small">
+            <i class="bi bi-arrow-left"></i> Back to Programs
         </a>
 
-        <div class="card shadow-sm border-0 p-3 mb-3">
-            <div class="d-flex justify-content-between align-items-center gap-3">
+        <div class="cm-card">
+            <div class="d-flex align-items-center gap-3 p-3 flex-wrap">
 
-                <div class="flex-grow-1">
-                    <label class="small text-muted fw-bold">SERVICE NAME</label>
+                <div class="flex-grow-1" style="min-width: 0;">
+                    <label class="form-label fw-semibold text-secondary mb-1" style="font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;">Service Name</label>
                     <input type="text" id="service-name" name="name" value="{{ program.name }}"
-                        class="form-control form-control-lg fw-bold border-0 bg-light">
+                        class="form-control form-control-lg border-0 bg-transparent fw-bold p-0 shadow-none"
+                        style="font-size: 1.125rem;">
                 </div>
 
-                <div style="width: 250px;">
-                    <label class="small text-muted fw-bold">PPT TEMPLATE</label>
-                    <select class="form-select bg-light border-0" id="ppt-template-select" name="template_id"
-                        hx-post="/programs/{{ program.id }}/update_meta" hx-trigger="change" hx-include="#service-name"
+                <div style="width: 240px; flex-shrink: 0;">
+                    <label class="form-label fw-semibold text-secondary mb-1" style="font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;">PPT Template</label>
+                    <select class="form-select form-select-sm bg-body border" id="ppt-template-select" name="template_id"
+                        hx-post="/programs/{{ program.id }}/update_meta"
+                        hx-trigger="change"
+                        hx-include="#service-name"
                         hx-swap="none">
-
-                        <option value="">-- No Template --</option>
-
+                        <option value="">— No Template —</option>
                         {% for t in templates %}
-                        <option value="{{ t.id }}" {% if program.template_id==t.id %}selected{% endif %}>
+                        <option value="{{ t.id }}" {% if program.template_id == t.id %}selected{% endif %}>
                             {{ t.name }}
                         </option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <div class="text-end ps-3 border-start d-flex flex-column gap-2">
+                <div class="d-flex flex-column gap-2 ps-3 border-start" style="flex-shrink: 0;">
                     <a href="/programs/{{ program.id }}/download_ppt" target="_blank"
-                        class="btn btn-success btn-sm fw-bold w-100">
-                        Download PPT
+                        class="btn btn-success btn-sm d-flex align-items-center gap-1">
+                        <i class="bi bi-download"></i> Download PPT
                     </a>
-                    <div class="btn-group w-100">
+                    <div class="btn-group">
                         <a href="/api/program/{{ program.id }}/json" target="_blank"
-                            class="btn btn-outline-dark btn-sm">{ } JSON</a>
-                        <button class="btn btn-outline-danger btn-sm" hx-delete="/programs/{{ program.id }}"
-                            hx-confirm="Delete?" hx-target="body">Delete</button>
+                            class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+                            <i class="bi bi-braces"></i> JSON
+                        </a>
+                        <button class="btn btn-outline-danger btn-sm"
+                            hx-delete="/programs/{{ program.id }}"
+                            hx-confirm="Delete this program?"
+                            hx-target="body">
+                            <i class="bi bi-trash3"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card shadow border-0">
+    <!-- ── Order of Service ── -->
+    <div class="cm-card">
+        <div class="cm-card-header">
+            <h5 class="cm-title">
+                <span class="cm-chip cm-chip-indigo">
+                    <i class="bi bi-list-ol"></i>
+                </span>
+                Order of Service
+            </h5>
 
-        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
-            <h5 class="m-0 text-primary">Order of Service</h5>
-
-            <button class="btn btn-primary fw-bold px-4 shadow-sm" id="save-btn"
-                hx-post="/programs/{{ program.id }}/update_meta" hx-include="#service-name, #ppt-template-select"
-                hx-swap="none" hx-on::after-request="showSavedStatus()">
+            <button class="btn btn-primary btn-sm px-3 d-flex align-items-center gap-2" id="save-btn"
+                hx-post="/programs/{{ program.id }}/update_meta"
+                hx-include="#service-name, #ppt-template-select"
+                hx-swap="none"
+                hx-on::after-request="showSavedStatus()">
+                <i class="bi bi-floppy"></i>
                 Save Changes
             </button>
         </div>
 
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light text-uppercase text-muted small">
+                <thead style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">
                     <tr>
-                        <th style="width: 40px;" class="text-center"></th>
-                        <th style="width: 32%;">Event Title</th>
-                        <th style="width: 32%;">Description / Person</th>
-                        <th style="width: 25%;">PPT Tag</th>
-                        <th style="width: 80px;"></th>
+                        <th style="width: 40px;" class="text-center ps-3 text-secondary border-bottom"></th>
+                        <th style="width: 32%;" class="text-secondary border-bottom">Event Title</th>
+                        <th style="width: 32%;" class="text-secondary border-bottom">Description / Person</th>
+                        <th style="width: 25%;" class="text-secondary border-bottom">PPT Tag</th>
+                        <th style="width: 80px;" class="border-bottom"></th>
                     </tr>
                 </thead>
                 <tbody id="items-container">
@@ -80,10 +96,12 @@
             </table>
         </div>
 
-        <div class="card-footer bg-light p-3 text-center">
-            <button class="btn btn-primary w-100 py-2 fw-bold" hx-post="/programs/{{ program.id }}/add_item"
-                hx-target="#items-container" hx-swap="beforeend">
-                + Add Event
+        <div class="p-3 border-top">
+            <button class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2"
+                hx-post="/programs/{{ program.id }}/add_item"
+                hx-target="#items-container"
+                hx-swap="beforeend">
+                <i class="bi bi-plus-lg"></i> Add Event
             </button>
         </div>
     </div>
@@ -92,31 +110,29 @@
 
 <script>
     function showSavedStatus() {
-        const btn = document.getElementById('save-btn');
-        const originalText = btn.innerHTML;
+        var btn = document.getElementById('save-btn');
+        var icon = btn.querySelector('i');
+        var original = btn.innerHTML;
 
-        // 1. Change visual state to Green/Success
-        btn.innerHTML = 'Saved!';
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Saved!';
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-success');
 
-        // 2. Revert after 1.5 seconds
-        setTimeout(() => {
-            btn.innerHTML = originalText;
+        setTimeout(function () {
+            btn.innerHTML = original;
             btn.classList.remove('btn-success');
             btn.classList.add('btn-primary');
         }, 1500);
     }
 
-    // Initialize SortableJS for drag-and-drop
     document.addEventListener("DOMContentLoaded", function () {
         var el = document.getElementById('items-container');
         if (el) {
             new Sortable(el, {
                 handle: '.handle',
                 animation: 150,
-                ghostClass: 'bg-light',
-                onEnd: function (evt) {
+                ghostClass: 'table-active',
+                onEnd: function () {
                     var itemIds = Array.from(el.children).map(function (row) {
                         return row.getAttribute('data-id');
                     });
@@ -128,27 +144,19 @@
             });
         }
     });
-    // Auto-resize textareas function
-    function initAutoResize() {
-        const textareas = document.querySelectorAll('textarea.auto-expand');
-        textareas.forEach(tx => {
-            // Reset height to shrink if needed, then set to scrollHeight
-            tx.setAttribute('style', 'height:' + (tx.scrollHeight) + 'px;overflow-y:hidden;');
-            tx.addEventListener("input", OnInput, false);
-        });
 
-        function OnInput() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        }
+    function initAutoResize() {
+        document.querySelectorAll('textarea.auto-expand').forEach(function (tx) {
+            tx.style.height = tx.scrollHeight + 'px';
+            tx.style.overflowY = 'hidden';
+            tx.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+        });
     }
 
-    // Run on load
     document.addEventListener("DOMContentLoaded", initAutoResize);
-
-    // Run after HTMX adds a new row
-    document.body.addEventListener('htmx:afterSwap', function (evt) {
-        initAutoResize();
-    });
+    document.body.addEventListener('htmx:afterSwap', initAutoResize);
 </script>
 {% endblock %}

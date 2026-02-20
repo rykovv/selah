@@ -1,54 +1,52 @@
 {% for prog in programs %}
-<div
-    class="list-group-item p-3 d-flex align-items-center justify-content-between {{ 'bg-success-subtle' if prog.is_active else '' }}">
+<div class="cm-list-item {{ 'bg-success-subtle' if prog.is_active else '' }}"
+    style="{% if prog.is_active %}border-left: 3px solid var(--cm-emerald);{% else %}border-left: 3px solid transparent;{% endif %}">
 
-    <div class="d-flex align-items-center gap-3 flex-grow-1">
-        <div style="width: 40px; height: 40px;"
-            class="rounded-circle d-flex align-items-center justify-content-center {{ 'bg-success text-white' if prog.is_active else 'bg-light text-muted' }}">
+    <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+        <div class="cm-chip {{ 'cm-chip-emerald' if prog.is_active else 'cm-chip-muted' }} flex-shrink-0">
             {% if prog.is_active %}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
-                <path
-                    d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z" />
-            </svg>
+            <i class="bi bi-check-circle-fill"></i>
             {% else %}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                <path
-                    d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
-                <path d="M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8z" />
-            </svg>
+            <i class="bi bi-circle"></i>
             {% endif %}
         </div>
 
-        <div>
-            <h5 class="mb-0 text-dark">
-                <a href="/programs/{{ prog.id }}" class="text-decoration-none text-dark stretched-link">{{ prog.name
-                    }}</a>
-            </h5>
-            <small class="text-muted">
-                {{ prog.items|length }} items
-            </small>
+        <div class="min-w-0">
+            <a href="/programs/{{ prog.id }}"
+                class="text-decoration-none fw-semibold stretched-link"
+                style="font-size: 0.9375rem; color: var(--bs-body-color);">
+                {{ prog.name }}
+            </a>
+            <div class="text-secondary" style="font-size: 0.8rem;">
+                {{ prog.items|length }} item{{ 's' if prog.items|length != 1 else '' }}
+            </div>
         </div>
     </div>
 
-    <div class="d-flex align-items-center gap-2 position-relative" style="z-index: 2;">
+    <div class="d-flex align-items-center gap-2 position-relative flex-shrink-0" style="z-index: 2;">
         {% if not prog.is_active %}
-        <button class="btn btn-outline-success btn-sm" hx-post="/programs/{{ prog.id }}/activate"
-            hx-target="#program-list"> Set Active
+        <button class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+            hx-post="/programs/{{ prog.id }}/activate"
+            hx-target="#program-list">
+            <i class="bi bi-check-circle"></i> Set Active
         </button>
         {% else %}
-        <span class="badge bg-success">ACTIVE</span>
+        <span class="cm-pill cm-pill-success">
+            <i class="bi bi-broadcast me-1"></i>ACTIVE
+        </span>
         {% endif %}
-
-        <a href="/programs/{{ prog.id }}" class="btn btn-outline-secondary btn-sm">Edit</a>
+        <a href="/programs/{{ prog.id }}"
+            class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
     </div>
-
 </div>
 {% endfor %}
 
 {% if not programs %}
-<div class="p-5 text-center text-muted">
-    <h4>No service programs yet</h4>
-    <p>Create one to get started.</p>
+<div class="cm-empty">
+    <i class="bi bi-calendar3 cm-empty-icon"></i>
+    <p>No service programs yet.</p>
+    <p class="text-secondary small">Create one to get started.</p>
 </div>
 {% endif %}
