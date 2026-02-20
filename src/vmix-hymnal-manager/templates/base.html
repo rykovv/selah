@@ -392,6 +392,34 @@
             background: var(--cm-amber-bg);
         }
 
+        /* ─── Dashboard order-of-service rows ─── */
+        .cm-oos-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 0.6rem 1.25rem;
+            border-bottom: 1px solid var(--bs-border-color);
+            transition: background 0.1s;
+        }
+
+        .cm-oos-row:last-child { border-bottom: none; }
+        .cm-oos-row:hover { background: var(--bs-tertiary-bg); }
+
+        .cm-oos-num {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--cm-emerald);
+            min-width: 20px;
+            text-align: right;
+            flex-shrink: 0;
+            padding-top: 3px;
+            opacity: 0.75;
+        }
+
+        /* Hymn row — reveal eye button on hover */
+        .cm-preview-btn { opacity: 0; transition: opacity 0.15s; }
+        .cm-list-item:hover .cm-preview-btn { opacity: 1; }
+
         /* ─── Muted rows (program editor table) ─── */
         tr.cm-row-muted { opacity: 0.38; }
         tr.cm-row-muted textarea[name="title"] { text-decoration: line-through; }
