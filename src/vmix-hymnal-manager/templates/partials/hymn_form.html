@@ -18,9 +18,9 @@
         {% endif %}
     </div>
 
-    <form action="/hymns/save" method="post" class="d-flex flex-column flex-grow-1"
-        style="min-height: 0;" onsubmit="prepareSubmission()">
-        {% if hymn %}<input type="hidden" name="hymn_id" value="{{ hymn.id }}">{% endif %}
+    <form id="hymn-form" class="d-flex flex-column flex-grow-1"
+        style="min-height: 0;" onsubmit="return submitHymn(event)">
+        <input type="hidden" name="hymn_id" id="hymn-id-field" value="{{ hymn.id if hymn else '' }}">
 
         <!-- Number + Title row -->
         <div class="row g-2 mb-3 flex-shrink-0">
@@ -114,8 +114,10 @@
 
         <!-- Save button -->
         <div class="mt-3 d-flex justify-content-end flex-shrink-0">
-            <button type="submit" class="btn btn-success px-4 d-flex align-items-center gap-2">
-                <i class="bi bi-floppy"></i> Save All
+            <button type="submit" id="save-btn" class="btn btn-success px-4 d-flex align-items-center gap-2"
+                style="transition: all 0.25s ease;">
+                <i class="bi bi-floppy" id="save-icon"></i>
+                <span id="save-label">Save All</span>
             </button>
         </div>
     </form>
@@ -158,22 +160,87 @@
         });
     }
 
-    function prepareSubmission() {
-        var container = document.getElementById('submission-container');
-        container.innerHTML = '';
-        function addInput(name, val) {
-            var i = document.createElement('input');
-            i.type = 'hidden'; i.name = name; i.value = val;
-            container.appendChild(i);
-        }
+    function submitHymn(e) {
+        e.preventDefault();
+
+        var btn   = document.getElementById('save-btn');
+        var icon  = document.getElementById('save-icon');
+        var label = document.getElementById('save-label');
+        if (btn.disabled) return false;
+
+        /* Build form data with parsed slides */
+        var fd = new FormData();
+        var hymnId = document.getElementById('hymn-id-field').value;
+        if (hymnId) fd.append('hymn_id', hymnId);
+        fd.append('number', document.querySelector('[name="number"]').value);
+        fd.append('title',  document.querySelector('[name="title"]').value);
+
         parseText(document.getElementById('vmix-editor').value).forEach(function(s) {
-            addInput('vmix_labels', s.label);
-            addInput('vmix_contents', s.content);
+            fd.append('vmix_labels', s.label);
+            fd.append('vmix_contents', s.content);
         });
         parseText(document.getElementById('ppt-editor').value).forEach(function(s) {
-            addInput('ppt_labels', s.label);
-            addInput('ppt_contents', s.content);
+            fd.append('ppt_labels', s.label);
+            fd.append('ppt_contents', s.content);
         });
+
+        /* Disable button & show spinner */
+        btn.disabled = true;
+        icon.className = 'spinner-border spinner-border-sm';
+        label.textContent = 'Saving…';
+
+        fetch('/hymns/save', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: fd
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            /* For new hymns, store the id so subsequent saves are updates */
+            if (data.is_new && data.hymn_id) {
+                document.getElementById('hymn-id-field').value = data.hymn_id;
+                /* Switch header from "New Hymn" to "Edit Hymn" */
+                var header = document.querySelector('#hymn-form').closest('.d-flex.flex-column')
+                    .querySelector('h5');
+                if (header) {
+                    header.querySelector('i').className = 'bi bi-pencil';
+                    header.childNodes[header.childNodes.length - 1].textContent = ' Edit Hymn';
+                }
+            }
+
+            /* Success animation — flash green checkmark */
+            icon.className = 'bi bi-check-lg';
+            label.textContent = 'Saved!';
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-success');
+
+            setTimeout(function() {
+                icon.className = 'bi bi-floppy';
+                label.textContent = 'Save All';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-success');
+                btn.disabled = false;
+            }, 1400);
+
+            /* Refresh the sidebar library list */
+            htmx.trigger(document.body, 'refreshLibrary');
+        })
+        .catch(function() {
+            icon.className = 'bi bi-exclamation-triangle';
+            label.textContent = 'Error';
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-danger');
+
+            setTimeout(function() {
+                icon.className = 'bi bi-floppy';
+                label.textContent = 'Save All';
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-success');
+                btn.disabled = false;
+            }, 2000);
+        });
+
+        return false;
     }
 
     renderPreview('vmix');

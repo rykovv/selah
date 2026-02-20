@@ -1,7 +1,9 @@
 """Hymn management, editor, search, plan, and PPT download routes."""
 
-from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from typing import List
+
+from fastapi import APIRouter, Body, Depends, Form, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -64,6 +66,30 @@ def remove_from_plan(item_id: int, db: Session = Depends(get_db)):
     return HTMLResponse(content="")
 
 
+@router.put("/plan/reorder")
+def reorder_plan(order: List[int] = Body(...), db: Session = Depends(get_db)):
+    """Accept a list of ServicePlanHymn IDs in their new order."""
+    items = (
+        db.query(ServicePlanHymnModel)
+        .filter(ServicePlanHymnModel.id.in_(order))
+        .all()
+    )
+    lookup = {item.id: item for item in items}
+
+    # Clear to negative temporaries to avoid UNIQUE constraint violations
+    for i, item_id in enumerate(order):
+        if item_id in lookup:
+            lookup[item_id].sequence = -(i + 1)
+    db.flush()
+
+    # Assign final positive sequences
+    for i, item_id in enumerate(order):
+        if item_id in lookup:
+            lookup[item_id].sequence = i + 1
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
 def _renumber_plan(db: Session):
     """Renumber service plan sequences to be contiguous (1, 2, 3, ...)."""
     items = (
@@ -110,6 +136,7 @@ def get_edit_form(hymn_id: int, request: Request, db: Session = Depends(get_db))
 
 @router.post("/hymns/save")
 def save_hymn(
+    request: Request,
     hymn_id: int = Form(None),
     number: str = Form(...),
     title: str = Form(...),
@@ -119,6 +146,7 @@ def save_hymn(
     ppt_contents: list[str] = Form(default=[]),
     db: Session = Depends(get_db),
 ):
+    is_new = hymn_id is None
     if hymn_id:
         hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
         hymn.number = number
@@ -144,6 +172,13 @@ def save_hymn(
         )
 
     db.commit()
+
+    # AJAX request — stay on the editor, return JSON
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse(
+            {"ok": True, "hymn_id": hymn.id, "is_new": is_new}
+        )
+
     return RedirectResponse(url="/editor", status_code=303)
 
 

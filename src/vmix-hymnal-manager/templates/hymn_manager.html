@@ -34,7 +34,11 @@
                 {% if plan %}
                 <div id="service-list">
                     {% for item in plan %}
-                    <div id="plan-row-{{ item.id }}" class="cm-plan-row">
+                    <div id="plan-row-{{ item.id }}" class="cm-plan-row" data-id="{{ item.id }}">
+                        <span class="cm-drag-handle" title="Drag to reorder"
+                            style="cursor: grab; color: var(--bs-secondary-color); opacity: 0.35; transition: opacity 0.15s; display: flex; align-items: center;">
+                            <i class="bi bi-grip-vertical"></i>
+                        </span>
                         <span class="cm-plan-seq">{{ loop.index }}</span>
                         <span class="cm-hymn-num" style="min-width: 2.25rem;">{{ item.hymn.number }}</span>
                         <span class="fw-semibold text-truncate flex-grow-1"
@@ -231,5 +235,34 @@
             el.required = false;
         }
     }
+
+    /* ── Drag-to-reorder service hymns ── */
+    (function () {
+        var list = document.getElementById('service-list');
+        if (!list) return;
+
+        Sortable.create(list, {
+            handle: '.cm-drag-handle',
+            animation: 180,
+            ghostClass: 'cm-sortable-ghost',
+            chosenClass: 'cm-sortable-chosen',
+            onEnd: function () {
+                /* Renumber the visible sequence badges */
+                var rows = list.querySelectorAll('.cm-plan-row');
+                var order = [];
+                rows.forEach(function (row, i) {
+                    row.querySelector('.cm-plan-seq').textContent = i + 1;
+                    order.push(parseInt(row.getAttribute('data-id')));
+                });
+
+                /* Persist new order to backend */
+                fetch('/plan/reorder', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(order)
+                });
+            }
+        });
+    })();
 </script>
 {% endblock %}
