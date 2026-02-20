@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="cm-card d-flex overflow-hidden" style="height: calc(100vh - 5.5rem); position: relative;">
+<div class="cm-card d-flex overflow-hidden" style="height: calc(100vh - 5.5rem);">
 
     <!-- ── Sidebar ── -->
     <div id="sidebar-panel" class="d-flex flex-column border-end"
-        style="width: 320px; flex-shrink: 0; min-width: 0; overflow: hidden; background: var(--bs-body-bg);">
+        style="width: 300px; flex-shrink: 0; min-width: 0; overflow: hidden;
+               background: var(--bs-body-bg); transition: width 0.22s ease;">
 
-        <!-- Sidebar header -->
-        <div class="p-3 border-bottom" style="background: var(--bs-body-bg);">
+        <!-- Header -->
+        <div class="p-3 border-bottom flex-shrink-0" style="background: var(--bs-body-bg);">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="cm-chip cm-chip-violet">
@@ -19,24 +20,29 @@
                 <div class="d-flex align-items-center gap-2">
                     <button class="btn btn-sm btn-primary d-flex align-items-center gap-1"
                         hx-get="/hymns/form" hx-target="#editor-canvas">
-                        <i class="bi bi-plus-lg"></i> New Hymn
+                        <i class="bi bi-plus-lg"></i> New
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary border-0 p-1"
-                        onclick="toggleSidebar()" title="Collapse sidebar">
-                        <i class="bi bi-layout-sidebar-reverse"></i>
+                    <button class="btn btn-sm border-0 p-1 d-flex align-items-center justify-content-center"
+                        style="width: 28px; height: 28px; color: var(--bs-secondary-color); border-radius: 6px;"
+                        onmouseover="this.style.background='var(--bs-tertiary-bg)'"
+                        onmouseout="this.style.background=''"
+                        onclick="collapseSidebar()" title="Collapse sidebar">
+                        <i class="bi bi-chevron-left" style="font-size: 0.8rem;"></i>
                     </button>
                 </div>
             </div>
-
-            <input type="text" name="q" class="form-control form-control-sm"
-                placeholder="Search number, title, lyrics…"
-                autocomplete="off"
-                hx-get="/editor/search"
-                hx-trigger="keyup changed delay:300ms, search, refreshLibrary from:body"
-                hx-target="#editor-list">
+            <div class="cm-search-wrap">
+                <i class="bi bi-search cm-search-icon"></i>
+                <input type="text" name="q" class="form-control form-control-sm"
+                    placeholder="Search number, title, lyrics…"
+                    autocomplete="off"
+                    hx-get="/editor/search"
+                    hx-trigger="keyup changed delay:300ms, search, refreshLibrary from:body"
+                    hx-target="#editor-list">
+            </div>
         </div>
 
-        <!-- Sidebar list -->
+        <!-- List -->
         <div class="flex-grow-1 overflow-auto">
             <div id="editor-list">
                 {% include "partials/editor_list.html" %}
@@ -44,29 +50,25 @@
         </div>
     </div>
 
-    <!-- ── Resize handle ── -->
+    <!-- ── Handle — doubles as expand tab when sidebar is collapsed ── -->
     <div id="drag-handle"
-        style="width: 4px; cursor: col-resize; flex-shrink: 0; background: var(--bs-border-color); transition: background 0.15s;"
-        onmouseover="this.style.background='var(--bs-primary)'"
-        onmouseout="this.style.background='var(--bs-border-color)'">
+        style="width: 4px; flex-shrink: 0; cursor: col-resize;
+               background: var(--bs-border-color);
+               transition: width 0.22s ease, background 0.15s, border-radius 0.22s;
+               display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <i id="handle-icon" class="bi bi-chevron-right"
+            style="display: none; font-size: 0.75rem; color: var(--bs-secondary-color);"></i>
     </div>
 
     <!-- ── Editor canvas ── -->
-    <div class="flex-grow-1 position-relative d-flex flex-column" style="min-width: 0; background: var(--bs-body-bg);">
-
-        <!-- Expander button (shown when sidebar is collapsed) -->
-        <button id="sidebar-expander" class="btn btn-primary position-absolute shadow-sm"
-            style="top: 14px; left: 14px; z-index: 100; display: none; width: 36px; height: 36px; padding: 0; border-radius: 8px;"
-            onclick="toggleSidebar()" title="Expand sidebar">
-            <i class="bi bi-layout-sidebar"></i>
-        </button>
-
-        <div id="editor-canvas" class="h-100 w-100" style="transition: padding-left 0.25s ease;">
+    <div class="flex-grow-1 d-flex flex-column" style="min-width: 0; background: var(--bs-body-bg);">
+        <div id="editor-canvas" class="h-100 w-100">
             <div class="d-flex h-100 justify-content-center align-items-center text-secondary">
                 <div class="text-center">
-                    <i class="bi bi-pencil-square" style="font-size: 2.5rem; opacity: 0.25; display: block; margin-bottom: 1rem;"></i>
-                    <p class="fw-semibold mb-1">Select a hymn to edit</p>
-                    <p class="small text-secondary">or click <strong>+ New Hymn</strong> to create one.</p>
+                    <i class="bi bi-pencil-square"
+                        style="font-size: 2.5rem; opacity: 0.2; display: block; margin-bottom: 1rem;"></i>
+                    <p class="fw-semibold mb-1" style="font-size: 0.9375rem;">Select a hymn to edit</p>
+                    <p class="small text-secondary mb-0">or click <strong>+ New</strong> to create one.</p>
                 </div>
             </div>
         </div>
@@ -74,65 +76,91 @@
 </div>
 
 <script>
-    var sidebar = document.getElementById('sidebar-panel');
-    var handle  = document.getElementById('drag-handle');
-    var expander = document.getElementById('sidebar-expander');
-    var canvas  = document.getElementById('editor-canvas');
-    var isResizing = false;
-    var lastWidth = 320;
+    var sidebar     = document.getElementById('sidebar-panel');
+    var handle      = document.getElementById('drag-handle');
+    var handleIcon  = document.getElementById('handle-icon');
+    var isResizing  = false;
+    var isCollapsed = false;
+    var lastWidth   = 300;
+    var MIN_WIDTH   = 180;
+    var MAX_WIDTH   = 700;
 
-    handle.addEventListener('mousedown', function () {
+    /* ── Collapse / expand ── */
+    function collapseSidebar() {
+        lastWidth = Math.max(parseInt(sidebar.style.width) || 300, MIN_WIDTH);
+        sidebar.style.width = '0px';
+        setHandleExpand(true);
+        isCollapsed = true;
+    }
+
+    function expandSidebar() {
+        sidebar.style.width = lastWidth + 'px';
+        setHandleExpand(false);
+        isCollapsed = false;
+    }
+
+    function setHandleExpand(expand) {
+        if (expand) {
+            handle.style.width = '24px';
+            handle.style.cursor = 'pointer';
+            handle.style.background = 'var(--bs-tertiary-bg)';
+            handle.style.borderRadius = '0 8px 8px 0';
+            handle.style.borderRight = '1px solid var(--bs-border-color)';
+            handleIcon.style.display = 'block';
+        } else {
+            handle.style.width = '4px';
+            handle.style.cursor = 'col-resize';
+            handle.style.background = 'var(--bs-border-color)';
+            handle.style.borderRadius = '';
+            handle.style.borderRight = '';
+            handleIcon.style.display = 'none';
+        }
+    }
+
+    /* ── Handle interactions ── */
+    handle.addEventListener('mousedown', function (e) {
+        if (isCollapsed) {
+            expandSidebar();
+            return;
+        }
         isResizing = true;
+        sidebar.style.transition = 'none';
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    handle.addEventListener('mouseover', function () {
+        if (!isCollapsed) handle.style.background = 'var(--bs-primary)';
+    });
+    handle.addEventListener('mouseout', function () {
+        if (!isCollapsed) handle.style.background = 'var(--bs-border-color)';
     });
 
     document.addEventListener('mousemove', function (e) {
         if (!isResizing) return;
-        var containerOffset = sidebar.parentElement.getBoundingClientRect().left;
-        var newWidth = e.clientX - containerOffset;
+        var offset = sidebar.parentElement.getBoundingClientRect().left;
+        var newWidth = e.clientX - offset;
 
-        if (newWidth < 50) {
-            newWidth = 0;
-            showExpander();
-        } else {
-            if (newWidth < 180) newWidth = 180;
-            if (newWidth > 700) newWidth = 700;
-            hideExpander();
-            lastWidth = newWidth;
+        if (newWidth < 80) {
+            collapseSidebar();
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            return;
         }
+        if (newWidth < MIN_WIDTH) newWidth = MIN_WIDTH;
+        if (newWidth > MAX_WIDTH) newWidth = MAX_WIDTH;
+        lastWidth = newWidth;
         sidebar.style.width = newWidth + 'px';
     });
 
     document.addEventListener('mouseup', function () {
+        if (!isResizing) return;
         isResizing = false;
+        sidebar.style.transition = 'width 0.22s ease';
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
     });
-
-    function toggleSidebar() {
-        sidebar.style.transition = 'width 0.25s ease';
-        if (sidebar.style.width === '0px') {
-            sidebar.style.width = lastWidth + 'px';
-            hideExpander();
-        } else {
-            lastWidth = parseInt(sidebar.style.width) || 320;
-            sidebar.style.width = '0px';
-            setTimeout(showExpander, 260);
-        }
-        setTimeout(function () { sidebar.style.transition = ''; }, 300);
-    }
-
-    function showExpander() {
-        expander.style.display = 'flex';
-        expander.style.alignItems = 'center';
-        expander.style.justifyContent = 'center';
-        canvas.style.paddingLeft = '58px';
-    }
-
-    function hideExpander() {
-        expander.style.display = 'none';
-        canvas.style.paddingLeft = '0';
-    }
 </script>
 {% endblock %}

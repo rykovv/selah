@@ -3,59 +3,82 @@
 {% block content %}
 <div class="row g-4" style="height: calc(100vh - 5.5rem);">
 
-    <!-- ── Service Plan ── -->
-    <div class="col-md-6 d-flex flex-column">
-        <div class="cm-card d-flex flex-column flex-grow-1 overflow-hidden">
+    <!-- ── Service Hymns (plan) ── -->
+    <div class="col-lg-5 d-flex flex-column" style="min-height: 0;">
+        <div class="cm-card d-flex flex-column h-100 overflow-hidden">
+
             <div class="cm-card-header">
                 <h5 class="cm-title">
                     <span class="cm-chip cm-chip-emerald">
                         <i class="bi bi-collection-play"></i>
                     </span>
-                    This Sabbath's Service
+                    Service Hymns
                 </h5>
-
-                <button type="button" class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-                    data-bs-toggle="modal" data-bs-target="#pptSettingsModal">
-                    <i class="bi bi-file-earmark-slides"></i>
-                    Download PPT
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    {% if plan %}
+                    <span class="text-secondary" style="font-size: 0.78rem;">
+                        {{ plan|length }} hymn{{ 's' if plan|length != 1 else '' }}
+                    </span>
+                    {% endif %}
+                    <button type="button"
+                        class="btn btn-sm btn-success d-flex align-items-center gap-1"
+                        data-bs-toggle="modal" data-bs-target="#pptSettingsModal"
+                        title="Download Hymns PPT">
+                        <i class="bi bi-download"></i>
+                        <span class="d-none d-sm-inline">PPT</span>
+                    </button>
+                </div>
             </div>
 
             <div class="flex-grow-1 overflow-auto">
                 {% if plan %}
-                    <ul class="list-unstyled mb-0" id="service-list">
-                        {% for item in plan %}
-                        <li class="cm-list-item">
-                            <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
-                                <span class="cm-pill cm-pill-muted">{{ item.sequence }}</span>
-                                <div class="text-truncate">
-                                    <strong>{{ item.hymn.number }}</strong>
-                                    <span class="ms-1">{{ item.hymn.title }}</span>
-                                </div>
-                            </div>
-                            <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                                hx-delete="/plan/{{ item.id }}"
-                                hx-target="closest li"
-                                hx-swap="outerHTML">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="cm-empty">
-                        <i class="bi bi-collection cm-empty-icon"></i>
-                        <p>The service plan is empty.<br>Add hymns from the library.</p>
+                <div id="service-list">
+                    {% for item in plan %}
+                    <div id="plan-row-{{ item.id }}" class="cm-plan-row">
+                        <span class="cm-plan-seq">{{ loop.index }}</span>
+                        <span class="cm-hymn-num" style="min-width: 2.25rem;">{{ item.hymn.number }}</span>
+                        <span class="fw-semibold text-truncate flex-grow-1"
+                            style="font-size: 0.9rem; color: var(--bs-body-color);">
+                            {{ item.hymn.title }}
+                        </span>
+                        <button class="btn btn-sm border-0 p-1 d-flex align-items-center cm-preview-btn"
+                            style="color: var(--bs-secondary-color);"
+                            title="Preview"
+                            hx-get="/hymns/{{ item.hymn.id }}/preview"
+                            hx-target="#preview-content"
+                            data-bs-toggle="modal"
+                            data-bs-target="#previewModal">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm border-0 p-1 d-flex align-items-center"
+                            style="color: var(--bs-danger-text-emphasis, #dc2626); opacity: 0.35; transition: opacity 0.15s;"
+                            onmouseover="this.style.opacity=1"
+                            onmouseout="this.style.opacity=0.35"
+                            title="Remove"
+                            hx-delete="/plan/{{ item.id }}"
+                            hx-target="#plan-row-{{ item.id }}"
+                            hx-swap="outerHTML">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="cm-empty">
+                    <i class="bi bi-collection cm-empty-icon"></i>
+                    <p>No hymns yet.<br>Search and add from the library →</p>
+                </div>
                 {% endif %}
             </div>
+
         </div>
     </div>
 
     <!-- ── Hymn Library ── -->
-    <div class="col-md-6 d-flex flex-column">
-        <div class="cm-card d-flex flex-column flex-grow-1 overflow-hidden">
-            <div class="cm-card-header flex-column align-items-stretch gap-2">
+    <div class="col-lg-7 d-flex flex-column" style="min-height: 0;">
+        <div class="cm-card d-flex flex-column h-100 overflow-hidden">
+
+            <div class="cm-card-header flex-column align-items-stretch gap-2" style="padding-bottom: 0.75rem;">
                 <div class="d-flex align-items-center justify-content-between">
                     <h5 class="cm-title">
                         <span class="cm-chip cm-chip-indigo">
@@ -63,18 +86,30 @@
                         </span>
                         Hymn Library
                     </h5>
-                    <a href="/api/vmix" target="_blank" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-                        title="vMix JSON Source">
-                        <i class="bi bi-broadcast"></i>
-                        vMix Feed
-                    </a>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-secondary" style="font-size: 0.78rem;">
+                            {{ library|length }} hymns
+                        </span>
+                        <a href="/api/vmix" target="_blank"
+                            class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                            title="vMix JSON feed">
+                            <i class="bi bi-broadcast"></i>
+                            <span class="d-none d-md-inline">vMix Feed</span>
+                        </a>
+                    </div>
                 </div>
-                <input type="text" name="q" class="form-control form-control-sm"
-                    placeholder="Search by number, title or lyrics…"
-                    autocomplete="off"
-                    hx-get="/library/search"
-                    hx-trigger="keyup changed delay:300ms, search"
-                    hx-target="#library-list">
+
+                <!-- Search -->
+                <div class="cm-search-wrap">
+                    <i class="bi bi-search cm-search-icon"></i>
+                    <input type="search" name="q" class="form-control form-control-sm"
+                        placeholder="Search by number, title, or lyrics…"
+                        autocomplete="off"
+                        autofocus
+                        hx-get="/library/search"
+                        hx-trigger="keyup changed delay:250ms, search"
+                        hx-target="#library-list">
+                </div>
             </div>
 
             <div class="flex-grow-1 overflow-auto">
@@ -82,16 +117,21 @@
                     {% include "partials/library_list.html" %}
                 </div>
             </div>
+
         </div>
     </div>
 </div>
+
 
 <!-- ── Lyric Preview Modal ── -->
 <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-semibold">Lyric Preview</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="cm-chip cm-chip-indigo"><i class="bi bi-eye"></i></span>
+                    <h5 class="modal-title fw-semibold mb-0">Hymn Preview</h5>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="preview-content">
@@ -102,27 +142,29 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
+
 <!-- ── PPT Settings Modal ── -->
 <div class="modal fade" id="pptSettingsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header border-bottom">
+            <div class="modal-header">
                 <div class="d-flex align-items-center gap-2">
                     <span class="cm-chip cm-chip-emerald"><i class="bi bi-file-earmark-slides"></i></span>
-                    <h5 class="modal-title fw-semibold mb-0">PowerPoint Settings</h5>
+                    <h5 class="modal-title fw-semibold mb-0">Hymns PPT Settings</h5>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <form action="/download/ppt" method="get">
-                <div class="modal-body">
-                    <div class="mb-4">
+                <div class="modal-body d-flex flex-column gap-3">
+
+                    <div>
                         <label class="form-label fw-semibold small">Aspect Ratio</label>
                         <div class="d-flex gap-3">
                             <div class="form-check">
@@ -136,8 +178,8 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="pptFontSelect" class="form-label fw-semibold small">Font Family</label>
+                    <div>
+                        <label class="form-label fw-semibold small">Font Family</label>
                         <select class="form-select" name="font_select" id="pptFontSelect"
                             onchange="toggleManualFont(this)">
                             <option value="Arial" selected>Arial (Universal)</option>
@@ -149,28 +191,27 @@
                             <option value="Manual">Manual input…</option>
                         </select>
                         <input type="text" class="form-control mt-2 d-none" name="font_manual" id="pptFontManual"
-                            placeholder="Enter font name exactly (e.g. Helvetica)">
+                            placeholder="Enter font name exactly…">
                     </div>
 
                     <div class="row g-3">
                         <div class="col-6">
-                            <label for="titleSize" class="form-label fw-semibold small">Title Size (pt)</label>
-                            <input type="number" class="form-control" name="title_size" id="titleSize" value="80"
-                                min="20" max="200">
+                            <label class="form-label fw-semibold small">Title Size (pt)</label>
+                            <input type="number" class="form-control" name="title_size" value="80" min="20" max="200">
                         </div>
                         <div class="col-6">
-                            <label for="lyricsSize" class="form-label fw-semibold small">Lyrics Size (pt)</label>
-                            <input type="number" class="form-control" name="lyrics_size" id="lyricsSize" value="60"
-                                min="20" max="200">
+                            <label class="form-label fw-semibold small">Lyrics Size (pt)</label>
+                            <input type="number" class="form-control" name="lyrics_size" value="60" min="20" max="200">
                         </div>
                     </div>
+
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success d-flex align-items-center gap-2"
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm d-flex align-items-center gap-2"
                         onclick="bootstrap.Modal.getInstance(document.getElementById('pptSettingsModal')).hide();">
-                        <i class="bi bi-download"></i> Download Presentation
+                        <i class="bi bi-download"></i> Download
                     </button>
                 </div>
             </form>

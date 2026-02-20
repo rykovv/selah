@@ -420,6 +420,57 @@
         .cm-preview-btn { opacity: 0; transition: opacity 0.15s; }
         .cm-list-item:hover .cm-preview-btn { opacity: 1; }
 
+        /* ─── Compact list variant ─── */
+        .cm-list-item.cm-list-item-sm { padding: 0.4rem 1.25rem; }
+
+        /* ─── Hymn library number badge ─── */
+        .cm-hymn-num {
+            font-family: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+            min-width: 2.75rem;
+            text-align: right;
+            flex-shrink: 0;
+            color: var(--bs-primary);
+            opacity: 0.75;
+            letter-spacing: -0.01em;
+        }
+
+        /* ─── Service plan row ─── */
+        .cm-plan-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.55rem 1.25rem;
+            border-bottom: 1px solid var(--bs-border-color);
+            transition: background 0.1s;
+        }
+        .cm-plan-row:last-child { border-bottom: none; }
+        .cm-plan-row:hover { background: var(--bs-tertiary-bg); }
+
+        .cm-plan-seq {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--cm-emerald);
+            min-width: 16px;
+            text-align: right;
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+
+        /* Search box with icon */
+        .cm-search-wrap { position: relative; }
+        .cm-search-wrap .cm-search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--bs-secondary-color);
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+        .cm-search-wrap input { padding-left: 2rem; }
+
         /* ─── Muted rows (program editor table) ─── */
         tr.cm-row-muted { opacity: 0.38; }
         tr.cm-row-muted textarea[name="title"] { text-decoration: line-through; }

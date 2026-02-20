@@ -1,14 +1,20 @@
 {% if library %}
 {% for hymn in library %}
-<div class="cm-list-item">
-    <div class="flex-grow-1 min-w-0 text-truncate">
-        <strong style="font-size: 0.875rem;">{{ hymn.number }}</strong>
-        <span class="ms-1" style="font-size: 0.875rem;">{{ hymn.title }}</span>
+<div class="cm-list-item cm-list-item-sm">
+
+    <span class="cm-hymn-num">{{ hymn.number }}</span>
+
+    <div class="flex-grow-1 min-w-0">
+        <span class="fw-semibold text-truncate d-block"
+            style="font-size: 0.875rem; color: var(--bs-body-color); line-height: 1.3;">
+            {{ hymn.title }}
+        </span>
     </div>
 
-    <div class="d-flex gap-1 flex-shrink-0">
-        <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-            title="Preview Lyrics"
+    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+        <button class="btn btn-sm border-0 p-1 d-flex align-items-center cm-preview-btn"
+            style="color: var(--bs-secondary-color);"
+            title="Preview lyrics"
             hx-get="/hymns/{{ hymn.id }}/preview"
             hx-target="#preview-content"
             data-bs-toggle="modal"
@@ -16,18 +22,21 @@
             <i class="bi bi-eye"></i>
         </button>
 
-        <button class="btn btn-sm btn-primary d-flex align-items-center gap-1"
+        <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2"
             hx-post="/plan/add"
             hx-vals='{"hymn_id": "{{ hymn.id }}"}'
-            hx-target="body">
-            <i class="bi bi-plus-lg"></i> Add
+            hx-target="body"
+            hx-push-url="false"
+            title="Add to service">
+            <i class="bi bi-plus-lg"></i>
+            <span class="d-none d-sm-inline">Add</span>
         </button>
     </div>
 </div>
 {% endfor %}
 {% else %}
-<div class="cm-empty py-4">
-    <i class="bi bi-search cm-empty-icon" style="font-size: 1.75rem;"></i>
-    <p class="small">No matches found.</p>
+<div class="cm-empty py-5">
+    <i class="bi bi-search cm-empty-icon"></i>
+    <p>No hymns found.<br><span class="text-secondary" style="font-size: 0.8rem;">Try a different number, title, or lyric fragment.</span></p>
 </div>
 {% endif %}
