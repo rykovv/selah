@@ -303,6 +303,91 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--bs-border-color); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--bs-secondary-color); }
+
+        /* ─── Program cards (programs list page) ─── */
+        .cm-prog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .cm-prog-card {
+            background: var(--bs-body-bg);
+            border: 2px solid var(--bs-border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            overflow: hidden;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+
+        /* Pulsing live dot */
+        @keyframes cm-live-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.35; transform: scale(0.75); }
+        }
+
+        .cm-live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            flex-shrink: 0;
+            animation: cm-live-pulse 1.6s ease-in-out infinite;
+        }
+
+        .cm-prog-card:not(.cm-prog-active):hover {
+            border-color: var(--bs-primary);
+            box-shadow: var(--cm-shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .cm-prog-card.cm-prog-active {
+            border-color: var(--cm-emerald);
+            background: var(--cm-emerald-bg);
+        }
+
+        /* ─── Muted rows (program editor table) ─── */
+        tr.cm-row-muted { opacity: 0.38; }
+        tr.cm-row-muted textarea[name="title"] { text-decoration: line-through; }
+
+        /* ─── Program editor top bar ─── */
+        .cm-editor-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--bs-body-bg);
+            border-bottom: 1px solid var(--bs-border-color);
+            flex-wrap: wrap;
+        }
+
+        .cm-editor-bar .cm-prog-title-input {
+            flex-grow: 1;
+            min-width: 160px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--bs-body-color);
+            background: transparent;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 0.3rem 0.6rem;
+            outline: none;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .cm-editor-bar .cm-prog-title-input:hover {
+            background: var(--bs-tertiary-bg);
+            border-color: var(--bs-border-color);
+        }
+
+        .cm-editor-bar .cm-prog-title-input:focus {
+            background: var(--bs-body-bg);
+            border-color: var(--bs-primary);
+            box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.12);
+        }
     </style>
 </head>
 

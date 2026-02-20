@@ -1,131 +1,146 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="max-width: 920px;">
 
-    <!-- ── Back + Meta ── -->
-    <div class="mb-4">
-        <a href="/programs" class="text-decoration-none text-secondary d-inline-flex align-items-center gap-1 mb-3 small">
-            <i class="bi bi-arrow-left"></i> Back to Programs
+<!-- ── Editor bar ── -->
+<div class="cm-card cm-editor-bar mb-4" style="overflow: visible;">
+
+    <a href="/programs" class="btn btn-sm btn-outline-secondary flex-shrink-0 d-flex align-items-center gap-1"
+        title="Back to programs">
+        <i class="bi bi-arrow-left"></i>
+        <span class="d-none d-md-inline">Programs</span>
+    </a>
+
+    <input type="text"
+        id="service-name"
+        name="name"
+        class="cm-prog-title-input"
+        value="{{ program.name }}"
+        placeholder="Program name…"
+        hx-post="/programs/{{ program.id }}/update_meta"
+        hx-trigger="blur changed"
+        hx-include="#ppt-template-select"
+        hx-swap="none"
+        hx-on::after-request="flashSaved()">
+
+    <!-- Template selector -->
+    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+        <i class="bi bi-file-earmark-slides text-secondary" style="font-size: 0.85rem;"></i>
+        <select class="form-select form-select-sm border-0 bg-transparent shadow-none fw-medium"
+            id="ppt-template-select"
+            name="template_id"
+            style="width: auto; max-width: 180px; cursor: pointer;"
+            hx-post="/programs/{{ program.id }}/update_meta"
+            hx-trigger="change"
+            hx-include="#service-name"
+            hx-swap="none"
+            hx-on::after-request="flashSaved()">
+            <option value="">No Template</option>
+            {% for t in templates %}
+            <option value="{{ t.id }}" {% if program.template_id == t.id %}selected{% endif %}>
+                {{ t.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Save indicator -->
+    <span id="save-indicator"
+        class="text-secondary d-flex align-items-center gap-1 flex-shrink-0"
+        style="font-size: 0.78rem; opacity: 0; transition: opacity 0.3s ease; white-space: nowrap;">
+        <i class="bi bi-check-circle-fill text-success"></i> Saved
+    </span>
+
+    <div class="ms-auto d-flex align-items-center gap-2 flex-shrink-0">
+        <!-- Download PPT -->
+        <a href="/programs/{{ program.id }}/download_ppt" target="_blank"
+            class="btn btn-sm btn-success d-flex align-items-center gap-1">
+            <i class="bi bi-download"></i>
+            <span class="d-none d-sm-inline">Download PPT</span>
         </a>
 
-        <div class="cm-card">
-            <div class="d-flex align-items-center gap-3 p-3 flex-wrap">
-
-                <div class="flex-grow-1" style="min-width: 0;">
-                    <label class="form-label fw-semibold text-secondary mb-1" style="font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;">Service Name</label>
-                    <input type="text" id="service-name" name="name" value="{{ program.name }}"
-                        class="form-control form-control-lg border-0 bg-transparent fw-bold p-0 shadow-none"
-                        style="font-size: 1.125rem;">
-                </div>
-
-                <div style="width: 240px; flex-shrink: 0;">
-                    <label class="form-label fw-semibold text-secondary mb-1" style="font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;">PPT Template</label>
-                    <select class="form-select form-select-sm bg-body border" id="ppt-template-select" name="template_id"
-                        hx-post="/programs/{{ program.id }}/update_meta"
-                        hx-trigger="change"
-                        hx-include="#service-name"
-                        hx-swap="none">
-                        <option value="">— No Template —</option>
-                        {% for t in templates %}
-                        <option value="{{ t.id }}" {% if program.template_id == t.id %}selected{% endif %}>
-                            {{ t.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="d-flex flex-column gap-2 ps-3 border-start" style="flex-shrink: 0;">
-                    <a href="/programs/{{ program.id }}/download_ppt" target="_blank"
-                        class="btn btn-success btn-sm d-flex align-items-center gap-1">
-                        <i class="bi bi-download"></i> Download PPT
+        <!-- More options -->
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                data-bs-toggle="dropdown" title="More options">
+                <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 10px; min-width: 160px;">
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2"
+                        href="/api/program/{{ program.id }}/json" target="_blank">
+                        <i class="bi bi-braces text-secondary"></i> View JSON
                     </a>
-                    <div class="btn-group">
-                        <a href="/api/program/{{ program.id }}/json" target="_blank"
-                            class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
-                            <i class="bi bi-braces"></i> JSON
-                        </a>
-                        <button class="btn btn-outline-danger btn-sm"
-                            hx-delete="/programs/{{ program.id }}"
-                            hx-confirm="Delete this program?"
-                            hx-target="body">
-                            <i class="bi bi-trash3"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <button class="dropdown-item d-flex align-items-center gap-2 text-danger"
+                        hx-delete="/programs/{{ program.id }}"
+                        hx-confirm="Delete "{{ program.name }}"? This cannot be undone."
+                        hx-target="body">
+                        <i class="bi bi-trash3"></i> Delete Program
+                    </button>
+                </li>
+            </ul>
         </div>
     </div>
+</div>
 
-    <!-- ── Order of Service ── -->
-    <div class="cm-card">
-        <div class="cm-card-header">
-            <h5 class="cm-title">
-                <span class="cm-chip cm-chip-indigo">
-                    <i class="bi bi-list-ol"></i>
-                </span>
-                Order of Service
-            </h5>
-
-            <button class="btn btn-primary btn-sm px-3 d-flex align-items-center gap-2" id="save-btn"
-                hx-post="/programs/{{ program.id }}/update_meta"
-                hx-include="#service-name, #ppt-template-select"
-                hx-swap="none"
-                hx-on::after-request="showSavedStatus()">
-                <i class="bi bi-floppy"></i>
-                Save Changes
-            </button>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">
-                    <tr>
-                        <th style="width: 40px;" class="text-center ps-3 text-secondary border-bottom"></th>
-                        <th style="width: 32%;" class="text-secondary border-bottom">Event Title</th>
-                        <th style="width: 32%;" class="text-secondary border-bottom">Description / Person</th>
-                        <th style="width: 25%;" class="text-secondary border-bottom">PPT Tag</th>
-                        <th style="width: 80px;" class="border-bottom"></th>
-                    </tr>
-                </thead>
-                <tbody id="items-container">
-                    {% for item in program.items %}
-                    {% include "partials/program_row.html" %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="p-3 border-top">
-            <button class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2"
-                hx-post="/programs/{{ program.id }}/add_item"
-                hx-target="#items-container"
-                hx-swap="beforeend">
-                <i class="bi bi-plus-lg"></i> Add Event
-            </button>
-        </div>
+<!-- ── Order of service ── -->
+<div class="cm-card">
+    <div class="cm-card-header">
+        <h5 class="cm-title">
+            <span class="cm-chip cm-chip-indigo">
+                <i class="bi bi-list-ol"></i>
+            </span>
+            Order of Service
+        </h5>
+        <span class="text-secondary" style="font-size: 0.8rem;">
+            {{ program.items | length }} item{{ 's' if program.items | length != 1 else '' }}
+            · rows auto-save on change
+        </span>
     </div>
 
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.055em;">
+                <tr>
+                    <th style="width: 36px;" class="ps-3 border-bottom text-secondary"></th>
+                    <th style="width: 33%;" class="border-bottom text-secondary">Event Title</th>
+                    <th style="width: 30%;" class="border-bottom text-secondary">Person / Description</th>
+                    <th style="width: 24%;" class="border-bottom text-secondary">PPT Tag</th>
+                    <th style="width: 72px;" class="border-bottom"></th>
+                </tr>
+            </thead>
+            <tbody id="items-container">
+                {% for item in program.items %}
+                {% include "partials/program_row.html" %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="p-3 border-top">
+        <button class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2"
+            hx-post="/programs/{{ program.id }}/add_item"
+            hx-target="#items-container"
+            hx-swap="beforeend">
+            <i class="bi bi-plus-lg"></i> Add Event
+        </button>
+    </div>
 </div>
 
 <script>
-    function showSavedStatus() {
-        var btn = document.getElementById('save-btn');
-        var icon = btn.querySelector('i');
-        var original = btn.innerHTML;
-
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Saved!';
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-success');
-
-        setTimeout(function () {
-            btn.innerHTML = original;
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-primary');
-        }, 1500);
+    var _saveTimer = null;
+    function flashSaved() {
+        var el = document.getElementById('save-indicator');
+        el.style.opacity = '1';
+        clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(function () { el.style.opacity = '0'; }, 2000);
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener('DOMContentLoaded', function () {
+        // Drag-to-reorder
         var el = document.getElementById('items-container');
         if (el) {
             new Sortable(el, {
@@ -133,11 +148,9 @@
                 animation: 150,
                 ghostClass: 'table-active',
                 onEnd: function () {
-                    var itemIds = Array.from(el.children).map(function (row) {
-                        return row.getAttribute('data-id');
-                    });
+                    var ids = Array.from(el.children).map(function (r) { return r.getAttribute('data-id'); });
                     htmx.ajax('POST', '/programs/{{ program.id }}/reorder', {
-                        values: { item_ids: itemIds },
+                        values: { item_ids: ids },
                         swap: 'none'
                     });
                 }
@@ -145,6 +158,7 @@
         }
     });
 
+    // Auto-resize textareas
     function initAutoResize() {
         document.querySelectorAll('textarea.auto-expand').forEach(function (tx) {
             tx.style.height = tx.scrollHeight + 'px';
@@ -156,7 +170,7 @@
         });
     }
 
-    document.addEventListener("DOMContentLoaded", initAutoResize);
+    document.addEventListener('DOMContentLoaded', initAutoResize);
     document.body.addEventListener('htmx:afterSwap', initAutoResize);
 </script>
 {% endblock %}

@@ -1,60 +1,59 @@
-<tr id="row-{{ item.id }}" data-id="{{ item.id }}" class="align-top">
+<tr id="row-{{ item.id }}" data-id="{{ item.id }}"
+    class="align-top{% if item.is_muted %} cm-row-muted{% endif %}">
 
-    <td class="text-center ps-3 handle py-3" style="width: 40px; cursor: move; vertical-align: middle; color: var(--bs-secondary-color);">
-        <i class="bi bi-grip-vertical"></i>
+    <td class="ps-3 handle" style="width: 36px; cursor: move; vertical-align: middle;">
+        <i class="bi bi-grip-vertical text-secondary opacity-50"></i>
     </td>
 
-    <td style="width: 32%;" class="p-2">
+    <td style="width: 33%;" class="p-2">
         <textarea
-            class="form-control border-0 bg-transparent fw-semibold shadow-none auto-expand {{ 'text-secondary opacity-50 text-decoration-line-through' if item.is_muted else '' }}"
-            rows="1" name="title" placeholder="Event Title"
+            class="form-control border-0 bg-transparent fw-semibold shadow-none auto-expand p-1"
+            rows="1" name="title" placeholder="Event title…"
             hx-post="/programs/item/{{ item.id }}/update"
             hx-trigger="change"
             hx-include="closest tr">{{ item.title or '' }}</textarea>
     </td>
 
-    <td style="width: 32%;" class="p-2">
+    <td style="width: 30%;" class="p-2">
         <textarea
-            class="form-control border-0 bg-transparent shadow-none auto-expand {{ 'text-secondary opacity-50' if item.is_muted else '' }}"
-            rows="1" name="subtitle" placeholder="Description / Person"
+            class="form-control border-0 bg-transparent shadow-none auto-expand p-1 text-secondary"
+            rows="1" name="subtitle" placeholder="Person / description…"
             hx-post="/programs/item/{{ item.id }}/update"
             hx-trigger="change"
             hx-include="closest tr">{{ item.subtitle or '' }}</textarea>
     </td>
 
-    <td style="width: 25%;" class="p-2">
-        <div class="input-group input-group-sm">
-            <span class="input-group-text text-secondary bg-transparent border-secondary-subtle px-1" style="font-size:0.8rem; border-radius: 6px 0 0 6px;">{{'{{}}'[0:2]}}</span>
-            <textarea
-                class="form-control border-secondary-subtle bg-transparent px-1 font-monospace text-primary fw-semibold shadow-none auto-expand"
-                rows="1" name="tag" placeholder="tag"
-                style="resize: none; overflow: hidden; font-size: 0.8rem;"
+    <td style="width: 24%;" class="p-2">
+        <div class="d-flex align-items-center gap-0">
+            <span class="text-secondary font-monospace px-1" style="font-size: 0.75rem; opacity: 0.5; user-select: none;">{{ '{{' }}</span>
+            <input type="text"
+                class="form-control border-0 bg-transparent px-1 font-monospace text-primary fw-semibold shadow-none auto-expand"
+                name="tag" placeholder="tag"
+                style="font-size: 0.8rem; min-width: 0;"
+                value="{{ item.tag or '' }}"
                 hx-post="/programs/item/{{ item.id }}/update"
                 hx-trigger="change"
-                hx-include="closest tr">{{ item.tag or '' }}</textarea>
-            <span class="input-group-text text-secondary bg-transparent border-secondary-subtle px-1" style="font-size:0.8rem; border-radius: 0 6px 6px 0;">{{'{{}}'[2:4]}}</span>
+                hx-include="closest tr">
+            <span class="text-secondary font-monospace px-1" style="font-size: 0.75rem; opacity: 0.5; user-select: none;">{{ '}}' }}</span>
         </div>
     </td>
 
-    <td class="text-end align-middle p-2" style="width: 80px;">
+    <td class="text-end align-middle p-2" style="width: 72px;">
         <div class="d-flex gap-1 justify-content-end">
-            <button class="btn btn-sm border-0 p-1 {{ 'text-danger' if item.is_muted else 'text-success' }}"
-                title="{{ 'Hidden — PPT only' if item.is_muted else 'Visible in vMix & PPT' }}"
+            <button class="btn btn-sm border-0 p-1 d-flex align-items-center"
+                style="color: {% if item.is_muted %}var(--cm-emerald){% else %}var(--bs-secondary-color){% endif %}; transition: color 0.15s;"
+                title="{{ 'Click to make visible' if item.is_muted else 'Click to hide from vMix (PPT only)' }}"
                 hx-post="/programs/item/{{ item.id }}/toggle_mute"
                 hx-target="#row-{{ item.id }}"
                 hx-swap="outerHTML">
-                {% if item.is_muted %}
-                <i class="bi bi-broadcast-pin"></i>
-                {% else %}
-                <i class="bi bi-broadcast"></i>
-                {% endif %}
+                <i class="bi {{ 'bi-eye-slash' if item.is_muted else 'bi-eye' }}"></i>
             </button>
 
-            <button class="btn btn-sm border-0 p-1 text-danger opacity-50"
-                title="Remove Item"
-                style="transition: opacity 0.15s;"
+            <button class="btn btn-sm border-0 p-1 d-flex align-items-center text-danger"
+                style="opacity: 0.4; transition: opacity 0.15s;"
                 onmouseover="this.style.opacity=1"
-                onmouseout="this.style.opacity=0.5"
+                onmouseout="this.style.opacity=0.4"
+                title="Remove item"
                 hx-delete="/programs/item/{{ item.id }}"
                 hx-target="#row-{{ item.id }}"
                 hx-swap="outerHTML">

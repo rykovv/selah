@@ -1,52 +1,158 @@
-{% for prog in programs %}
-<div class="cm-list-item {{ 'bg-success-subtle' if prog.is_active else '' }}"
-    style="{% if prog.is_active %}border-left: 3px solid var(--cm-emerald);{% else %}border-left: 3px solid transparent;{% endif %}">
+{% set active_list = programs | selectattr('is_active') | list %}
+{% set active = active_list[0] if active_list else none %}
+{% set inactive = programs | rejectattr('is_active') | sort(attribute='last_used', reverse=True) | list %}
 
-    <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
-        <div class="cm-chip {{ 'cm-chip-emerald' if prog.is_active else 'cm-chip-muted' }} flex-shrink-0">
-            {% if prog.is_active %}
-            <i class="bi bi-check-circle-fill"></i>
-            {% else %}
-            <i class="bi bi-circle"></i>
+{% if not programs %}
+<div class="cm-empty py-5">
+    <i class="bi bi-calendar3 cm-empty-icon"></i>
+    <p>No service programs yet.</p>
+    <form action="/programs/new" method="post" class="mt-2">
+        <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Create your first program
+        </button>
+    </form>
+</div>
+
+{% else %}
+
+{% if active %}
+<!-- ── Active program — two-column card ── -->
+<div class="cm-prog-card cm-prog-active mb-4" style="padding: 0;">
+    <div class="row g-0">
+
+        <!-- Left: identity + actions -->
+        <div class="col-md-4 col-lg-3 p-4 d-flex flex-column gap-3">
+
+            <span class="cm-pill cm-pill-success d-inline-flex align-items-center gap-2 align-self-start">
+                <span class="cm-live-dot"></span> LIVE NOW
+            </span>
+
+            <div style="font-size: 1.3125rem; font-weight: 800; line-height: 1.25; color: var(--bs-body-color);">
+                {{ active.name }}
+            </div>
+
+            <div class="text-secondary d-flex flex-column gap-1" style="font-size: 0.8rem;">
+                <span class="d-flex align-items-center gap-2">
+                    <i class="bi bi-list-ol"></i>
+                    {{ active.items | length }} item{{ 's' if active.items | length != 1 else '' }}
+                </span>
+                {% if active.template_id %}
+                <span class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-slides"></i> Template assigned
+                </span>
+                {% else %}
+                <span class="d-flex align-items-center gap-2 opacity-50">
+                    <i class="bi bi-file-earmark-x"></i> No template
+                </span>
+                {% endif %}
+            </div>
+
+            <a href="/programs/{{ active.id }}"
+                class="btn btn-success btn-sm mt-auto d-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-pencil"></i> Edit Program
+            </a>
+        </div>
+
+        <!-- Right: full order-of-service preview -->
+        <div class="col-md-8 col-lg-9 d-flex flex-column"
+            style="background: var(--bs-body-bg); border-left: 1px solid rgba(5,150,105,0.2);">
+
+            <!-- Panel header -->
+            <div class="px-4 py-2 d-flex align-items-center gap-2 flex-shrink-0"
+                style="border-bottom: 1px solid var(--bs-border-color); background: rgba(5,150,105,0.04);">
+                <i class="bi bi-list-ol" style="font-size: 0.72rem; color: var(--cm-emerald); opacity: 0.75;"></i>
+                <span class="text-secondary fw-semibold"
+                    style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;">
+                    Order of Service
+                </span>
+                <span class="ms-auto text-secondary"
+                    style="font-size: 0.68rem;">
+                    {{ active.items | rejectattr('is_muted') | list | length }} items
+                </span>
+            </div>
+
+            <!-- Scrollable list -->
+            <div class="overflow-auto flex-grow-1" style="max-height: 298px;">
+                {% set preview = active.items | rejectattr('is_muted') | list %}
+                {% if preview %}
+                    {% set ns = namespace(n=0) %}
+                    {% for item in active.items %}
+                    {% if not item.is_muted %}
+                    {% set ns.n = ns.n + 1 %}
+                    <div class="d-flex align-items-center gap-3 px-4 py-2"
+                        style="border-bottom: 1px solid var(--bs-border-color); font-size: 0.875rem;">
+                        <span class="flex-shrink-0 fw-bold"
+                            style="font-size: 0.68rem; min-width: 20px; text-align: right;
+                                   color: var(--cm-emerald); opacity: 0.7;">
+                            {{ ns.n }}
+                        </span>
+                        <span class="fw-semibold flex-grow-1">{{ item.title }}</span>
+                        {% if item.subtitle %}
+                        <span class="text-secondary flex-shrink-0 text-truncate"
+                            style="max-width: 160px; font-size: 0.78rem;">
+                            {{ item.subtitle }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="cm-empty">
+                        <i class="bi bi-list-ol cm-empty-icon"></i>
+                        <p>No items yet.</p>
+                        <a href="/programs/{{ active.id }}" class="btn btn-sm btn-outline-success">
+                            Edit to add items
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endif %}
+
+{% if inactive %}
+{% if active %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <span class="text-secondary fw-semibold" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em;">Other Programs</span>
+    <div class="flex-grow-1" style="height: 1px; background: var(--bs-border-color);"></div>
+</div>
+{% endif %}
+
+<div class="cm-prog-grid">
+    {% for prog in inactive %}
+    <div class="cm-prog-card">
+        <div style="font-size: 1rem; font-weight: 700; color: var(--bs-body-color); margin-bottom: 0.5rem; line-height: 1.3;">
+            {{ prog.name }}
+        </div>
+
+        <div class="d-flex align-items-center gap-3 text-secondary flex-grow-1" style="font-size: 0.78rem; margin-bottom: 1rem;">
+            <span class="d-flex align-items-center gap-1">
+                <i class="bi bi-list-ol"></i>
+                {{ prog.items | length }} item{{ 's' if prog.items | length != 1 else '' }}
+            </span>
+            {% if prog.template_id %}
+            <span class="d-flex align-items-center gap-1">
+                <i class="bi bi-file-earmark-slides"></i> Template
+            </span>
             {% endif %}
         </div>
 
-        <div class="min-w-0">
+        <div class="d-flex gap-2 mt-auto">
+            <button class="btn btn-sm btn-outline-success flex-grow-1 d-flex align-items-center justify-content-center gap-1"
+                hx-post="/programs/{{ prog.id }}/activate"
+                hx-target="#program-list">
+                <i class="bi bi-broadcast"></i> Set Active
+            </button>
             <a href="/programs/{{ prog.id }}"
-                class="text-decoration-none fw-semibold stretched-link"
-                style="font-size: 0.9375rem; color: var(--bs-body-color);">
-                {{ prog.name }}
+                class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+                <i class="bi bi-pencil"></i>
             </a>
-            <div class="text-secondary" style="font-size: 0.8rem;">
-                {{ prog.items|length }} item{{ 's' if prog.items|length != 1 else '' }}
-            </div>
         </div>
     </div>
-
-    <div class="d-flex align-items-center gap-2 position-relative flex-shrink-0" style="z-index: 2;">
-        {% if not prog.is_active %}
-        <button class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-            hx-post="/programs/{{ prog.id }}/activate"
-            hx-target="#program-list">
-            <i class="bi bi-check-circle"></i> Set Active
-        </button>
-        {% else %}
-        <span class="cm-pill cm-pill-success">
-            <i class="bi bi-broadcast me-1"></i>ACTIVE
-        </span>
-        {% endif %}
-        <a href="/programs/{{ prog.id }}"
-            class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
-            <i class="bi bi-pencil"></i> Edit
-        </a>
-    </div>
+    {% endfor %}
 </div>
-{% endfor %}
+{% endif %}
 
-{% if not programs %}
-<div class="cm-empty">
-    <i class="bi bi-calendar3 cm-empty-icon"></i>
-    <p>No service programs yet.</p>
-    <p class="text-secondary small">Create one to get started.</p>
-</div>
 {% endif %}
