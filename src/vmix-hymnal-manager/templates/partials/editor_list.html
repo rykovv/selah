@@ -3,9 +3,9 @@
 <a href="#" class="cm-list-item text-decoration-none"
     hx-get="/hymns/{{ hymn.id }}/form"
     hx-target="#editor-canvas">
-    <div class="flex-grow-1 min-w-0">
+    <div style="flex: 1 1 0px; min-width: 0; overflow: hidden;">
         <span class="fw-semibold" style="font-size: 0.8125rem;">{{ hymn.number }}</span>
-        <span class="text-secondary ms-1 text-truncate" style="font-size: 0.8125rem;">{{ hymn.title }}</span>
+        <span class="text-secondary ms-1" style="font-size: 0.8125rem; word-break: break-word;">{{ hymn.title }}</span>
     </div>
     <i class="bi bi-chevron-right text-secondary flex-shrink-0" style="font-size: 0.7rem; opacity: 0.4;"></i>
 </a>

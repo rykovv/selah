@@ -81,9 +81,9 @@
                         {% set ns.n = ns.n + 1 %}
                         <div class="cm-oos-row">
                             <span class="cm-oos-num">{{ ns.n }}</span>
-                            <div class="min-w-0 flex-grow-1">
-                                <div class="fw-semibold text-truncate"
-                                    style="font-size: 0.9rem; line-height: 1.35; color: var(--bs-body-color);">
+                            <div style="flex: 1 1 0px; min-width: 0; overflow: hidden;">
+                                <div class="fw-semibold"
+                                    style="font-size: 0.9rem; line-height: 1.35; color: var(--bs-body-color); word-break: break-word;">
                                     {{ item.title }}
                                 </div>
                                 {% if item.subtitle %}
@@ -152,12 +152,12 @@
                     <div>
                         {% for item in service_plan %}
                         <div class="cm-list-item">
-                            <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+                            <div class="d-flex align-items-center gap-3" style="flex: 1 1 0px; min-width: 0; overflow: hidden;">
                                 <span class="cm-pill cm-pill-primary flex-shrink-0"
                                     style="min-width: 2.625rem; justify-content: center; font-variant-numeric: tabular-nums;">
                                     {{ item.hymn.number }}
                                 </span>
-                                <span class="fw-semibold text-truncate" style="font-size: 0.9rem;">
+                                <span class="fw-semibold" style="font-size: 0.9rem; flex: 1 1 0px; min-width: 0; word-break: break-word;">
                                     {{ item.hymn.title }}
                                 </span>
                             </div>

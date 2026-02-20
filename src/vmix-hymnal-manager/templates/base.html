@@ -587,6 +587,16 @@
             background: var(--bs-tertiary-bg);
         }
 
+        /* Two-line clamp for hymn / item titles */
+        .cm-title-wrap {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            overflow-wrap: break-word;
+        }
+
         .cm-plan-seq {
             font-size: 0.65rem;
             font-weight: 700;

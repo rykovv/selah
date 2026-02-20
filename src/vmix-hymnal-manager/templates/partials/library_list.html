@@ -4,9 +4,9 @@
 
     <span class="cm-hymn-num">{{ hymn.number }}</span>
 
-    <div class="flex-grow-1 min-w-0">
-        <span class="fw-semibold text-truncate d-block"
-            style="font-size: 0.875rem; color: var(--bs-body-color); line-height: 1.3;">
+    <div style="flex: 1 1 0px; min-width: 0; overflow: hidden;">
+        <span class="fw-semibold d-block"
+            style="font-size: 0.875rem; color: var(--bs-body-color); line-height: 1.3; word-break: break-word;">
             {{ hymn.title }}
         </span>
     </div>
