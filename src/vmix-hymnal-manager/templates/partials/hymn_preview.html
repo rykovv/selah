@@ -1,0 +1,78 @@
+<div class="p-0">
+    <h4 class="text-primary px-2 mb-3">{{ hymn.number }} - {{ hymn.title }}</h4>
+
+    <ul class="nav nav-tabs px-2" id="previewTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="prev-vmix-tab" data-bs-toggle="tab"
+                data-bs-target="#prev-vmix" type="button" role="tab">
+                vMix (Live)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="prev-ppt-tab" data-bs-toggle="tab"
+                data-bs-target="#prev-ppt" type="button" role="tab">
+                PowerPoint
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content p-2 mt-2" id="previewTabContent">
+        <div class="tab-pane fade show active" id="prev-vmix" role="tabpanel">
+            {% if vmix_slides %}
+                {% for slide in vmix_slides %}
+                    {% set lbl = slide.label|lower if slide.label else "" %}
+                    {% if "v" in lbl %}
+                        {% set badge_class = "bg-primary" %}
+                    {% elif "c" in lbl %}
+                        {% set badge_class = "bg-success" %}
+                    {% else %}
+                        {% set badge_class = "bg-secondary" %}
+                    {% endif %}
+                    <div class="card mb-2 border-0 shadow-sm bg-light">
+                        <div class="card-body p-2 d-flex">
+                            <div style="min-width: 80px;" class="text-muted small me-2">
+                                Slide {{ loop.index }}<br>
+                                {% if slide.label %}
+                                    <span class="badge {{ badge_class }} me-2">{{ slide.label }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-dark flex-grow-1"
+                                 style="white-space: pre-wrap; font-family: sans-serif; font-size: 1.1rem;">{{ slide.content }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-muted text-center p-4">No slides defined for this format.</div>
+            {% endif %}
+        </div>
+
+        <div class="tab-pane fade" id="prev-ppt" role="tabpanel">
+            {% if ppt_slides %}
+                {% for slide in ppt_slides %}
+                    {% set lbl = slide.label|lower if slide.label else "" %}
+                    {% if "v" in lbl %}
+                        {% set badge_class = "bg-primary" %}
+                    {% elif "c" in lbl %}
+                        {% set badge_class = "bg-success" %}
+                    {% else %}
+                        {% set badge_class = "bg-secondary" %}
+                    {% endif %}
+                    <div class="card mb-2 border-0 shadow-sm bg-light">
+                        <div class="card-body p-2 d-flex">
+                            <div style="min-width: 80px;" class="text-muted small me-2">
+                                Slide {{ loop.index }}<br>
+                                {% if slide.label %}
+                                    <span class="badge {{ badge_class }} me-2">{{ slide.label }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-dark flex-grow-1"
+                                 style="white-space: pre-wrap; font-family: sans-serif; font-size: 1.1rem;">{{ slide.content }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-muted text-center p-4">No slides defined for this format.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
