@@ -18,6 +18,11 @@ BG_COLOR = RGBColor(0, 0, 0)
 TEXT_COLOR = RGBColor(255, 255, 255)
 
 
+def _is_hymn_number(value: Optional[str]) -> bool:
+    """Return True if the value looks like a real hymn number (digits only)."""
+    return bool(value and value.strip().isdigit())
+
+
 class PptxConfig:
     """Font / size settings for PPTX generation."""
 
@@ -195,21 +200,30 @@ def generate_hymn_plan_pptx(plan_items, aspect: str = "4:3", config: Optional[Pp
         slide = _create_black_slide(prs)
         tf = _add_text_frame(slide, margin, safe_w, safe_h)
 
-        p1 = tf.paragraphs[0]
-        p1.text = f"Hymn #{hymn.number}"
-        p1.font.name = cfg.font_name
-        p1.font.size = cfg.number_size
-        p1.font.bold = False
-        p1.font.color.rgb = TEXT_COLOR
-        p1.alignment = PP_ALIGN.CENTER
+        if _is_hymn_number(hymn.number):
+            p1 = tf.paragraphs[0]
+            p1.text = f"Hymn #{hymn.number}"
+            p1.font.name = cfg.font_name
+            p1.font.size = cfg.number_size
+            p1.font.bold = False
+            p1.font.color.rgb = TEXT_COLOR
+            p1.alignment = PP_ALIGN.CENTER
 
-        p2 = tf.add_paragraph()
-        p2.text = hymn.title
-        p2.font.name = cfg.font_name
-        p2.font.size = cfg.title_size
-        p2.font.bold = True
-        p2.font.color.rgb = TEXT_COLOR
-        p2.alignment = PP_ALIGN.CENTER
+            p2 = tf.add_paragraph()
+            p2.text = hymn.title
+            p2.font.name = cfg.font_name
+            p2.font.size = cfg.title_size
+            p2.font.bold = True
+            p2.font.color.rgb = TEXT_COLOR
+            p2.alignment = PP_ALIGN.CENTER
+        else:
+            p1 = tf.paragraphs[0]
+            p1.text = hymn.title
+            p1.font.name = cfg.font_name
+            p1.font.size = cfg.title_size
+            p1.font.bold = True
+            p1.font.color.rgb = TEXT_COLOR
+            p1.alignment = PP_ALIGN.CENTER
 
         # Lyrics slides
         slides_source = get_slides_by_type(hymn, preferred_type="PPT")
@@ -296,7 +310,10 @@ def generate_program_pptx(
             content_chunks.append(f"(Hymn #{hymn_seq} not scheduled)")
         else:
             hymn = plan_item.hymn
-            content_chunks.append(f"Hymn #{hymn.number}\n{hymn.title}")
+            if _is_hymn_number(hymn.number):
+                content_chunks.append(f"Hymn #{hymn.number}\n{hymn.title}")
+            else:
+                content_chunks.append(hymn.title)
             ppt_slides = [s for s in hymn.slides if s.type == "PPT"]
             if ppt_slides:
                 for s in sorted(ppt_slides, key=lambda x: x.order):
@@ -315,19 +332,30 @@ def generate_program_pptx(
                         p_element = s.text_frame.paragraphs[0]._p
                         p_element.getparent().remove(p_element)
 
-                        p1 = s.text_frame.add_paragraph()
-                        p1.text = extra_chunk.splitlines()[0].strip()
-                        p1.font.name = cfg.font_name
-                        p1.font.size = Pt(int(cfg._title_size_raw * 0.5))
-                        p1.font.bold = False
-                        p1.alignment = PP_ALIGN.CENTER
+                        lines = extra_chunk.splitlines()
+                        if len(lines) > 1:
+                            # Hymn: first line is "Hymn #N", rest is title
+                            p1 = s.text_frame.add_paragraph()
+                            p1.text = lines[0].strip()
+                            p1.font.name = cfg.font_name
+                            p1.font.size = Pt(int(cfg._title_size_raw * 0.5))
+                            p1.font.bold = False
+                            p1.alignment = PP_ALIGN.CENTER
 
-                        p2 = s.text_frame.add_paragraph()
-                        p2.text = "\n".join(extra_chunk.splitlines()[1:]).strip()
-                        p2.font.name = cfg.font_name
-                        p2.font.size = Pt(cfg._title_size_raw)
-                        p2.font.bold = True
-                        p2.alignment = PP_ALIGN.CENTER
+                            p2 = s.text_frame.add_paragraph()
+                            p2.text = "\n".join(lines[1:]).strip()
+                            p2.font.name = cfg.font_name
+                            p2.font.size = Pt(cfg._title_size_raw)
+                            p2.font.bold = True
+                            p2.alignment = PP_ALIGN.CENTER
+                        else:
+                            # Worship song: title only
+                            p1 = s.text_frame.add_paragraph()
+                            p1.text = extra_chunk.strip()
+                            p1.font.name = cfg.font_name
+                            p1.font.size = Pt(cfg._title_size_raw)
+                            p1.font.bold = True
+                            p1.alignment = PP_ALIGN.CENTER
             else:
                 for s in new_slide.shapes:
                     if s.has_text_frame:
