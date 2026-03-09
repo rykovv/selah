@@ -67,14 +67,24 @@
             <div class="tab-pane fade show active h-100" id="vmix-pane" role="tabpanel">
                 <div class="row g-0 h-100 overflow-hidden">
                     <div class="col-md-6 d-flex flex-column border-end h-100">
-                        <div class="px-3 py-2 border-bottom d-flex align-items-center gap-2"
+                        <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between"
                             style="font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; background: var(--bs-tertiary-bg); color: var(--bs-secondary-color);">
-                            <i class="bi bi-broadcast text-primary"></i> Source (vMix)
+                            <span class="d-flex align-items-center gap-2">
+                                <i class="bi bi-broadcast text-primary"></i> Source (vMix)
+                            </span>
+                            <span class="d-flex align-items-center gap-1" style="text-transform: none; letter-spacing: normal; font-weight: 400;">
+                                <label for="vmix-line-limit" class="text-nowrap" title="Characters per line before wrap warning">Wrap</label>
+                                <input type="number" id="vmix-line-limit" class="form-control form-control-sm"
+                                    style="width: 56px; font-size: 0.7rem; padding: 0.15rem 0.3rem;" min="1"
+                                    oninput="onLimitChange('vmix')" placeholder="--">
+                            </span>
                         </div>
-                        <textarea id="vmix-editor"
-                            class="form-control border-0 flex-grow-1 p-3 overflow-auto font-monospace bg-transparent"
-                            style="resize: none; font-size: 0.8125rem;"
-                            oninput="renderPreview('vmix')">{% if hymn %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}</textarea>
+                        <div class="editor-wrap flex-grow-1" style="position: relative; overflow: hidden;">
+                            <div id="vmix-backdrop" class="editor-backdrop"></div>
+                            <textarea id="vmix-editor" class="editor-textarea"
+                                oninput="onEditorInput('vmix')"
+                                onscroll="syncScroll('vmix')">{% if hymn %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}</textarea>
+                        </div>
                     </div>
                     <div class="col-md-6 d-flex flex-column h-100">
                         <div class="px-3 py-2 border-bottom d-flex align-items-center gap-2"
@@ -90,14 +100,24 @@
             <div class="tab-pane fade h-100" id="ppt-pane" role="tabpanel">
                 <div class="row g-0 h-100 overflow-hidden">
                     <div class="col-md-6 d-flex flex-column border-end h-100">
-                        <div class="px-3 py-2 border-bottom d-flex align-items-center gap-2"
+                        <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between"
                             style="font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; background: var(--bs-tertiary-bg); color: var(--bs-secondary-color);">
-                            <i class="bi bi-file-earmark-slides text-primary"></i> Source (PPT)
+                            <span class="d-flex align-items-center gap-2">
+                                <i class="bi bi-file-earmark-slides text-primary"></i> Source (PPT)
+                            </span>
+                            <span class="d-flex align-items-center gap-1" style="text-transform: none; letter-spacing: normal; font-weight: 400;">
+                                <label for="ppt-line-limit" class="text-nowrap" title="Characters per line before wrap warning">Wrap</label>
+                                <input type="number" id="ppt-line-limit" class="form-control form-control-sm"
+                                    style="width: 56px; font-size: 0.7rem; padding: 0.15rem 0.3rem;" min="1"
+                                    oninput="onLimitChange('ppt')" placeholder="--">
+                            </span>
                         </div>
-                        <textarea id="ppt-editor"
-                            class="form-control border-0 flex-grow-1 p-3 overflow-auto font-monospace bg-transparent"
-                            style="resize: none; font-size: 0.8125rem;"
-                            oninput="renderPreview('ppt')">{% if hymn %}{% set ppt_slides = hymn.slides|selectattr('type', 'equalto', 'PPT')|list %}{% if ppt_slides %}{% for s in ppt_slides %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% else %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}{% endif %}</textarea>
+                        <div class="editor-wrap flex-grow-1" style="position: relative; overflow: hidden;">
+                            <div id="ppt-backdrop" class="editor-backdrop"></div>
+                            <textarea id="ppt-editor" class="editor-textarea"
+                                oninput="onEditorInput('ppt')"
+                                onscroll="syncScroll('ppt')">{% if hymn %}{% set ppt_slides = hymn.slides|selectattr('type', 'equalto', 'PPT')|list %}{% if ppt_slides %}{% for s in ppt_slides %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% else %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}{% endif %}</textarea>
+                        </div>
                     </div>
                     <div class="col-md-6 d-flex flex-column h-100">
                         <div class="px-3 py-2 border-bottom d-flex align-items-center gap-2"
@@ -123,6 +143,43 @@
     </form>
 </div>
 
+<style>
+    .editor-wrap { display: flex; flex-direction: column; }
+    .editor-backdrop, .editor-textarea {
+        font-family: var(--bs-font-monospace);
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        padding: 1rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        border: 0;
+    }
+    .editor-backdrop {
+        position: absolute; inset: 0;
+        overflow: auto;
+        color: transparent;
+        pointer-events: none;
+        z-index: 0;
+    }
+    .editor-backdrop .hl-over {
+        background: rgba(220,53,69,0.18);
+        border-bottom: 2px solid #dc3545;
+        border-radius: 2px;
+    }
+    .editor-textarea {
+        position: relative;
+        width: 100%; height: 100%;
+        resize: none;
+        background: transparent;
+        color: var(--bs-body-color);
+        caret-color: var(--bs-body-color);
+        z-index: 1;
+    }
+    /* when a limit is active and there are overflows, dim normal text so red pops */
+    .editor-textarea.has-overflow { color: var(--bs-body-color); }
+</style>
+
 <script>
     function parseText(text) {
         return text.split(/\n\s*\n/).map(function(block) {
@@ -133,11 +190,96 @@
         }).filter(function(x) { return x !== null; });
     }
 
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    /* ── Backdrop (source-side) highlighting ── */
+
+    function getLimit(type) {
+        var v = parseInt(document.getElementById(type + '-line-limit').value, 10);
+        return isNaN(v) || v <= 0 ? 0 : v;
+    }
+
+    function renderBackdrop(type) {
+        var textarea = document.getElementById(type + '-editor');
+        var backdrop = document.getElementById(type + '-backdrop');
+        var limit = getLimit(type);
+
+        if (!limit) {
+            backdrop.innerHTML = '';
+            textarea.classList.remove('has-overflow');
+            return;
+        }
+
+        var text = textarea.value;
+        var lines = text.split('\n');
+        var hasAny = false;
+        var html = lines.map(function(line) {
+            if (line.length <= limit) return escapeHtml(line);
+            hasAny = true;
+            return escapeHtml(line.substring(0, limit)) +
+                '<span class="hl-over">' + escapeHtml(line.substring(limit)) + '</span>';
+        }).join('\n');
+
+        backdrop.innerHTML = html + '\n';
+        textarea.classList.toggle('has-overflow', hasAny);
+    }
+
+    function syncScroll(type) {
+        var textarea = document.getElementById(type + '-editor');
+        var backdrop = document.getElementById(type + '-backdrop');
+        backdrop.scrollTop = textarea.scrollTop;
+        backdrop.scrollLeft = textarea.scrollLeft;
+    }
+
+    function onEditorInput(type) {
+        renderBackdrop(type);
+        renderPreview(type);
+    }
+
+    function onLimitChange(type) {
+        var val = document.getElementById(type + '-line-limit').value;
+        if (val) {
+            localStorage.setItem(type + '-line-limit', val);
+        } else {
+            localStorage.removeItem(type + '-line-limit');
+        }
+        onEditorInput(type);
+    }
+
+    function restoreLimits() {
+        ['vmix', 'ppt'].forEach(function(type) {
+            var saved = localStorage.getItem(type + '-line-limit');
+            if (saved) document.getElementById(type + '-line-limit').value = saved;
+        });
+    }
+
+    /* ── Preview-side rendering ── */
+
+    function formatContent(content, limit) {
+        if (!limit) return '<div style="white-space: pre-wrap; color: var(--bs-body-color);">' + escapeHtml(content) + '</div>';
+
+        var lines = content.split('\n');
+        var html = lines.map(function(line) {
+            if (line.length <= limit) return escapeHtml(line);
+            return escapeHtml(line.substring(0, limit)) +
+                '<span style="background: rgba(220,53,69,0.15); color: #dc3545; border-bottom: 2px solid #dc3545;">' +
+                escapeHtml(line.substring(limit)) + '</span>';
+        }).join('\n');
+
+        return '<div style="white-space: pre-wrap; color: var(--bs-body-color);">' + html + '</div>';
+    }
+
     function renderPreview(type) {
-        var editorId = type === 'vmix' ? 'vmix-editor' : 'ppt-editor';
-        var containerId = type === 'vmix' ? 'vmix-preview' : 'ppt-preview';
+        var editorId = type + '-editor';
+        var containerId = type + '-preview';
         var slides = parseText(document.getElementById(editorId).value);
         var container = document.getElementById(containerId);
+        var limit = getLimit(type);
+
         container.innerHTML = '';
         if (slides.length === 0) {
             container.innerHTML = '<div class="text-secondary text-center mt-5 small">No content…</div>';
@@ -148,14 +290,21 @@
             if (slide.label.toLowerCase().includes('v')) badgeClass = 'bg-primary';
             if (slide.label.toLowerCase().includes('c')) badgeClass = 'bg-success';
             var badge = slide.label ? '<span class="badge ' + badgeClass + ' mb-2">' + slide.label + '</span>' : '';
+
+            var hasOverflow = limit && slide.content.split('\n').some(function(l) { return l.length > limit; });
+            var warnBadge = hasOverflow
+                ? ' <span class="badge bg-danger mb-2" title="Line exceeds ' + limit + ' characters"><i class="bi bi-exclamation-triangle-fill"></i></span>'
+                : '';
+
             var card = document.createElement('div');
             card.className = 'card mb-2 border shadow-sm';
+            if (hasOverflow) card.style.borderColor = '#dc3545';
             card.style.borderRadius = '8px';
             card.innerHTML =
                 '<div class="card-body p-2" style="font-size:0.8125rem;">' +
-                '<div class="d-flex justify-content-between align-items-start mb-1">' + badge +
+                '<div class="d-flex justify-content-between align-items-start mb-1">' + badge + warnBadge +
                 '<span class="text-secondary" style="font-size:0.7rem;">Slide ' + (index + 1) + '</span></div>' +
-                '<div style="white-space: pre-wrap; color: var(--bs-body-color);">' + slide.content + '</div></div>';
+                formatContent(slide.content, limit) + '</div>';
             container.appendChild(card);
         });
     }
@@ -243,6 +392,7 @@
         return false;
     }
 
-    renderPreview('vmix');
-    renderPreview('ppt');
+    restoreLimits();
+    onEditorInput('vmix');
+    onEditorInput('ppt');
 </script>
