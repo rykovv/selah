@@ -214,24 +214,11 @@ def generate_hymn_plan_pptx(plan_items, aspect: str = "4:3", config: Optional[Pp
         # Lyrics slides
         slides_source = get_slides_by_type(hymn, preferred_type="PPT")
 
-        grouped = []
-        current_group = None
         for s in slides_source:
-            content = clean_text(s.content)
-            if s.label or current_group is None:
-                if current_group:
-                    grouped.append(current_group)
-                current_group = {"content": content}
-            else:
-                current_group["content"] += "\n\n" + content
-        if current_group:
-            grouped.append(current_group)
-
-        for g in grouped:
             slide = _create_black_slide(prs)
             tf = _add_text_frame(slide, margin, safe_w, safe_h)
             p = tf.paragraphs[0]
-            p.text = g["content"]
+            p.text = clean_text(s.content)
             p.font.name = cfg.font_name
             p.font.size = cfg.lyrics_size
             p.font.bold = False
