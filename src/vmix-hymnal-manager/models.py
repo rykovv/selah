@@ -17,7 +17,7 @@ class HymnModel(Base):
     __tablename__ = "hymns"
 
     id = Column(Integer, primary_key=True, index=True)
-    number = Column(String, unique=True, index=True)
+    number = Column(String, index=True)
     title = Column(String)
 
     slides = relationship(
