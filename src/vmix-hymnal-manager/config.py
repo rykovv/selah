@@ -4,9 +4,11 @@ import os
 
 class Settings:
     DATABASE_URL: str = "sqlite:///./hymns.db"
+    DEFAULT_DB_PATH: str = "hymns.db"
     UPLOAD_DIR: str = "templates"
     HOST: str = "0.0.0.0"
     PORT: int = 10001
+    needs_setup: bool = False
 
     @staticmethod
     def resolve_template_dir() -> str:

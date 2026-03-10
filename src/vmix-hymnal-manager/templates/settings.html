@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="cm-page-header">
+    <div>
+        <h2>Settings</h2>
+        <p class="cm-page-desc">Configure storage paths for the database and presentation templates.</p>
+    </div>
+</div>
+
+{% if needs_setup %}
+<div class="alert alert-info d-flex align-items-center gap-2 mb-4" role="alert"
+    style="border-radius: 10px; border: 1px solid rgba(99,102,241,0.3); background: rgba(99,102,241,0.08);">
+    <i class="bi bi-info-circle-fill text-primary" style="font-size: 1.25rem;"></i>
+    <div>
+        <strong>Welcome!</strong> Configure where to store your database and templates.
+        The app will use these paths for all data.
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="cm-card">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-indigo">
+                        <i class="bi bi-folder2-open"></i>
+                    </span>
+                    Storage Paths
+                </h5>
+            </div>
+
+            <div class="p-4">
+                <form id="paths-form" hx-post="/settings/paths" hx-swap="none"
+                    hx-on::after-request="onPathsSaved(event)">
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold d-flex align-items-center gap-2">
+                            <i class="bi bi-database text-primary"></i> Database File Path
+                        </label>
+                        <div class="input-group">
+                            <input type="text" name="db_path" id="db-path-input"
+                                class="form-control font-monospace"
+                                value="{{ db_path }}" required
+                                placeholder="C:\Users\...\Google Drive\hymns.db"
+                                style="font-size: 0.85rem;">
+                            <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-1"
+                                onclick="browseFile('db')">
+                                <i class="bi bi-folder2-open"></i> Browse
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Full path to the SQLite database file.
+                            Changing this requires an app restart.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold d-flex align-items-center gap-2">
+                            <i class="bi bi-folder text-primary"></i> Templates Folder Path
+                        </label>
+                        <div class="input-group">
+                            <input type="text" name="upload_dir" id="upload-dir-input"
+                                class="form-control font-monospace"
+                                value="{{ upload_dir }}" required
+                                placeholder="C:\Users\...\Google Drive\templates"
+                                style="font-size: 0.85rem;">
+                            <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-1"
+                                onclick="browseFile('upload')">
+                                <i class="bi bi-folder2-open"></i> Browse
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Folder for uploaded PowerPoint templates.
+                            Changes take effect immediately.
+                        </div>
+                    </div>
+
+                    <button type="submit" id="save-btn"
+                        class="btn btn-primary d-flex align-items-center gap-2">
+                        <i class="bi bi-check-lg" id="save-icon"></i>
+                        <span id="save-label">Save Settings</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="cm-card">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-emerald">
+                        <i class="bi bi-info-circle"></i>
+                    </span>
+                    Info
+                </h5>
+            </div>
+            <div class="p-4" style="font-size: 0.85rem; line-height: 1.6;">
+                <p class="mb-3">
+                    Point these paths to a <strong>Google Drive</strong> or other synced folder
+                    to share data across machines.
+                </p>
+                <p class="mb-3">
+                    <i class="bi bi-database text-secondary me-1"></i>
+                    <strong>Database</strong> stores all hymns, slides, programs, and settings.
+                </p>
+                <p class="mb-0">
+                    <i class="bi bi-folder text-secondary me-1"></i>
+                    <strong>Templates</strong> folder stores uploaded <code>.pptx</code> base files.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function browseFile(type) {
+    var url = type === 'db' ? '/settings/pick_db' : '/settings/pick_upload';
+    var input = type === 'db' ? document.getElementById('db-path-input')
+                              : document.getElementById('upload-dir-input');
+    fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.path) input.value = data.path;
+        })
+        .catch(function () {
+            cmToast('Could not open file picker.', 'error');
+        });
+}
+
+function onPathsSaved(evt) {
+    var xhr = evt.detail.xhr;
+    var btn = document.getElementById('save-btn');
+    var icon = document.getElementById('save-icon');
+    var label = document.getElementById('save-label');
+
+    if (!xhr || xhr.status >= 400) return; // handled by global HTMX error handler
+
+    var msg = (xhr.responseText || '').trim();
+    var needsRestart = msg.toLowerCase().indexOf('restart') !== -1;
+
+    if (needsRestart) {
+        cmToast(msg, 'warning');
+    } else {
+        cmToast(msg || 'Settings saved.', 'success');
+    }
+
+    icon.className = 'bi bi-check-lg';
+    label.textContent = 'Saved!';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-outline-success');
+
+    setTimeout(function () {
+        icon.className = 'bi bi-check-lg';
+        label.textContent = 'Save Settings';
+        btn.classList.remove('btn-outline-success');
+        btn.classList.add('btn-primary');
+    }, 2000);
+}
+</script>
+{% endblock %}

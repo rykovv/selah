@@ -808,6 +808,10 @@
                         <i class="bi bi-graph-up"></i>
                         <span>Monitoring</span>
                     </a>
+                    <a class="nav-link" href="/settings" data-cm-path="/settings">
+                        <i class="bi bi-gear"></i>
+                        <span>Settings</span>
+                    </a>
                 </div>
 
                 <div class="cm-nav-divider mx-2"></div>
@@ -854,7 +858,7 @@
                 toast.offsetHeight;
                 toast.classList.add('cm-toast-show');
 
-                var timer = setTimeout(function () { dismiss(toast); }, 4500);
+                var timer = setTimeout(function () { dismiss(toast); }, 30000);
 
                 function dismiss(el) {
                     clearTimeout(timer);

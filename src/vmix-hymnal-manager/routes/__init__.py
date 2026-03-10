@@ -9,6 +9,7 @@ def register_routes(app: FastAPI):
     from routes.templates_mgr import router as templates_router
     from routes.api import router as api_router
     from routes.monitoring import router as monitoring_router
+    from routes.settings import router as settings_router
 
     app.include_router(dashboard_router)
     app.include_router(hymns_router)
@@ -16,3 +17,4 @@ def register_routes(app: FastAPI):
     app.include_router(templates_router)
     app.include_router(api_router)
     app.include_router(monitoring_router)
+    app.include_router(settings_router)
