@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, Body, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.responses import StreamingResponse
-from sqlalchemy import or_
+from sqlalchemy import case, cast, Integer, or_
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -14,6 +14,19 @@ from services.pptx_service import PptxConfig, generate_hymn_plan_pptx
 from utils import get_slides_by_type
 
 router = APIRouter()
+
+# Natural sort: numeric hymn numbers first (by int value), then non-numeric alphabetically.
+# SQLite GLOB '*[^0-9]*' matches strings containing any non-digit character.
+_non_numeric = or_(
+    HymnModel.number.op('GLOB')('*[^0-9]*'),
+    HymnModel.number == '',
+    HymnModel.number.is_(None),
+)
+_hymn_order = (
+    case((_non_numeric, 1), else_=0),
+    case((_non_numeric, 0), else_=cast(HymnModel.number, Integer)),
+    HymnModel.number,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +40,7 @@ def page_hymns_manager(request: Request, db: Session = Depends(get_db)):
         .order_by(ServicePlanHymnModel.sequence)
         .all()
     )
-    library = db.query(HymnModel).order_by(HymnModel.number).all()
+    library = db.query(HymnModel).order_by(*_hymn_order).all()
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "hymn_manager.html",
@@ -108,7 +121,7 @@ def _renumber_plan(db: Session):
 
 @router.get("/editor", response_class=HTMLResponse)
 def editor_dashboard(request: Request, db: Session = Depends(get_db)):
-    hymns = db.query(HymnModel).order_by(HymnModel.number).all()
+    hymns = db.query(HymnModel).order_by(*_hymn_order).all()
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "editor.html", {"request": request, "hymns": hymns}
@@ -217,7 +230,7 @@ def _search_hymns(db: Session, q: str):
                 SlideModel.content.ilike(search),
             )
         )
-    return query.distinct().order_by(HymnModel.number).all()
+    return query.distinct().order_by(*_hymn_order).all()
 
 
 @router.get("/library/search", response_class=HTMLResponse)
