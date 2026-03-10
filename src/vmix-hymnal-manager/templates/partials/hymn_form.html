@@ -83,7 +83,7 @@
                             <div id="vmix-backdrop" class="editor-backdrop"></div>
                             <textarea id="vmix-editor" class="editor-textarea"
                                 oninput="onEditorInput('vmix')"
-                                onscroll="syncScroll('vmix')">{% if hymn %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}</textarea>
+                                onscroll="syncScroll('vmix')">{% if hymn %}{% set ns = namespace(prev='') %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label and s.label != ns.prev %}[{{ s.label }}]&#10;{% endif %}{% set ns.prev = s.label or ns.prev %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}</textarea>
                         </div>
                     </div>
                     <div class="col-md-6 d-flex flex-column h-100">
@@ -116,7 +116,7 @@
                             <div id="ppt-backdrop" class="editor-backdrop"></div>
                             <textarea id="ppt-editor" class="editor-textarea"
                                 oninput="onEditorInput('ppt')"
-                                onscroll="syncScroll('ppt')">{% if hymn %}{% set ppt_slides = hymn.slides|selectattr('type', 'equalto', 'PPT')|list %}{% if ppt_slides %}{% for s in ppt_slides %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% else %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label %}[{{ s.label }}]&#10;{% endif %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}{% endif %}</textarea>
+                                onscroll="syncScroll('ppt')">{% if hymn %}{% set ppt_slides = hymn.slides|selectattr('type', 'equalto', 'PPT')|list %}{% if ppt_slides %}{% set ns = namespace(prev='') %}{% for s in ppt_slides %}{% if s.label and s.label != ns.prev %}[{{ s.label }}]&#10;{% endif %}{% set ns.prev = s.label or ns.prev %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% else %}{% set ns = namespace(prev='') %}{% for s in hymn.slides if s.type == 'VMIX' %}{% if s.label and s.label != ns.prev %}[{{ s.label }}]&#10;{% endif %}{% set ns.prev = s.label or ns.prev %}{{ s.content }}{{ '\n\n' if not loop.last else '' }}{% endfor %}{% endif %}{% endif %}</textarea>
                         </div>
                     </div>
                     <div class="col-md-6 d-flex flex-column h-100">
@@ -182,11 +182,16 @@
 
 <script>
     function parseText(text) {
+        var lastLabel = '';
         return text.split(/\n\s*\n/).map(function(block) {
             block = block.trim();
             if (!block) return null;
             var match = block.match(/^\[(.*?)\]\s*([\s\S]*)/);
-            return match ? { label: match[1], content: match[2] } : { label: '', content: block };
+            if (match) {
+                lastLabel = match[1];
+                return { label: match[1], content: match[2], inherited: false };
+            }
+            return { label: lastLabel, content: block, inherited: !!lastLabel };
         }).filter(function(x) { return x !== null; });
     }
 
@@ -298,7 +303,12 @@
             var badgeClass = 'bg-secondary';
             if (slide.label.toLowerCase().includes('v')) badgeClass = 'bg-primary';
             if (slide.label.toLowerCase().includes('c')) badgeClass = 'bg-success';
-            var badge = slide.label ? '<span class="badge ' + badgeClass + ' mb-2">' + slide.label + '</span>' : '';
+            var badge = '';
+            if (slide.label && slide.inherited) {
+                badge = '<span class="badge mb-2" style="opacity:0.45;border:1px solid currentColor;background:transparent;color:var(--bs-secondary-color);">' + slide.label + '</span>';
+            } else if (slide.label) {
+                badge = '<span class="badge ' + badgeClass + ' mb-2">' + slide.label + '</span>';
+            }
 
             var hasOverflow = limit && slide.content.split('\n').some(function(l) { return l.length > limit; });
             var warnBadge = hasOverflow
