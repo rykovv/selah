@@ -1,13 +1,15 @@
 """JSON API endpoints for vMix and external consumers."""
 
-from typing import List
+from typing import Dict, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import (
-    HymnModel, ServicePlanHymnModel, ServiceProgramModel, VmixRow,
+    AppSettingModel, HymnModel, ServicePlanHymnModel, ServiceProgramModel,
+    VmixRow,
 )
 from services.program_service import serialize_program_items
 from utils import get_slides_by_type
@@ -71,3 +73,27 @@ def get_current_program_json(db: Session = Depends(get_db)):
     if not prog:
         return [{"title": "No Active Program", "subtitle": "Select one in Dashboard"}]
     return serialize_program_items(prog)
+
+
+# ---------------------------------------------------------------------------
+# App settings
+# ---------------------------------------------------------------------------
+
+@router.get("/api/settings")
+def get_settings(db: Session = Depends(get_db)):
+    """Return all app settings as a dict."""
+    rows = db.query(AppSettingModel).all()
+    return {r.key: r.value for r in rows}
+
+
+@router.put("/api/settings")
+def put_settings(data: Dict[str, str] = Body(...), db: Session = Depends(get_db)):
+    """Upsert one or more settings."""
+    for key, value in data.items():
+        row = db.query(AppSettingModel).filter(AppSettingModel.key == key).first()
+        if row:
+            row.value = value
+        else:
+            db.add(AppSettingModel(key=key, value=value))
+    db.commit()
+    return JSONResponse({"ok": True})

@@ -240,20 +240,29 @@
         renderPreview(type);
     }
 
+    var _limitSaveTimer = null;
     function onLimitChange(type) {
-        var val = document.getElementById(type + '-line-limit').value;
-        if (val) {
-            localStorage.setItem(type + '-line-limit', val);
-        } else {
-            localStorage.removeItem(type + '-line-limit');
-        }
         onEditorInput(type);
+        /* Debounce the save to avoid hammering the API on every keystroke */
+        clearTimeout(_limitSaveTimer);
+        _limitSaveTimer = setTimeout(function() {
+            var data = {};
+            data['vmix_line_limit'] = document.getElementById('vmix-line-limit').value || '';
+            data['ppt_line_limit'] = document.getElementById('ppt-line-limit').value || '';
+            fetch('/api/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+        }, 500);
     }
 
     function restoreLimits() {
-        ['vmix', 'ppt'].forEach(function(type) {
-            var saved = localStorage.getItem(type + '-line-limit');
-            if (saved) document.getElementById(type + '-line-limit').value = saved;
+        fetch('/api/settings').then(function(r) { return r.json(); }).then(function(settings) {
+            if (settings.vmix_line_limit) document.getElementById('vmix-line-limit').value = settings.vmix_line_limit;
+            if (settings.ppt_line_limit) document.getElementById('ppt-line-limit').value = settings.ppt_line_limit;
+            onEditorInput('vmix');
+            onEditorInput('ppt');
         });
     }
 
@@ -392,7 +401,8 @@
         return false;
     }
 
+    /* Render previews immediately, then overlay limits once fetched */
+    renderPreview('vmix');
+    renderPreview('ppt');
     restoreLimits();
-    onEditorInput('vmix');
-    onEditorInput('ppt');
 </script>

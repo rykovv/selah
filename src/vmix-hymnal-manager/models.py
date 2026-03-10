@@ -90,6 +90,13 @@ class PresentationTemplateModel(Base):
     filename = Column(String)
 
 
+class AppSettingModel(Base):
+    __tablename__ = "app_settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(String)
+
+
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
