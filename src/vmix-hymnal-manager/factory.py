@@ -22,8 +22,9 @@ MONITORED_PATHS = {"/api/vmix", "/api/program/current"}
 
 class MonitoringMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: StarletteRequest, call_next):
-        if request.url.path in MONITORED_PATHS:
-            record_request(request.url.path)
+        path = request.url.path
+        if path in MONITORED_PATHS or path.startswith("/api/feed/"):
+            record_request(path)
         return await call_next(request)
 
 

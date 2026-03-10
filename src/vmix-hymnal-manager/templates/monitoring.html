@@ -51,6 +51,37 @@
     </div>
 </div>
 
+{% if feed_tables %}
+<div class="d-flex align-items-center gap-2 mt-4 mb-3">
+    <span class="text-secondary fw-semibold"
+        style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em;">
+        Data Table Feeds
+    </span>
+    <div class="flex-grow-1" style="height: 1px; background: var(--bs-border-color);"></div>
+</div>
+
+<div class="row g-4">
+    {% for ft in feed_tables %}
+    <div class="col-md-6">
+        <div class="cm-card">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-amber">
+                        <i class="bi bi-table"></i>
+                    </span>
+                    /api/feed/{{ ft.slug }}
+                </h5>
+                <span class="cm-pill cm-pill-muted feed-rps-badge" data-feed-slug="{{ ft.slug }}">0.00 req/s</span>
+            </div>
+            <div style="padding: 1rem; height: 260px;">
+                <canvas class="feed-chart" id="feedChart-{{ ft.slug }}" data-feed-slug="{{ ft.slug }}"></canvas>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- Chart.js from CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
@@ -67,6 +98,12 @@
             return {
                 border: isDark() ? '#818cf8' : '#4f46e5',
                 bg:     isDark() ? 'rgba(129,140,248,0.12)' : 'rgba(79,70,229,0.10)'
+            };
+        }
+        if (hue === 'amber') {
+            return {
+                border: isDark() ? '#fbbf24' : '#d97706',
+                bg:     isDark() ? 'rgba(251,191,36,0.12)' : 'rgba(217,119,6,0.10)'
             };
         }
         return {
@@ -134,6 +171,13 @@
     var vmixChart    = makeChart('vmixChart', 'indigo');
     var programChart = makeChart('programChart', 'emerald');
 
+    /* Build feed charts dynamically */
+    var feedCharts = {};
+    document.querySelectorAll('.feed-chart').forEach(function (canvas) {
+        var slug = canvas.getAttribute('data-feed-slug');
+        feedCharts[slug] = makeChart(canvas.id, 'amber');
+    });
+
     function pushPoint(chart, value) {
         var ds = chart.data.datasets[0].data;
         ds.push(value);
@@ -161,6 +205,14 @@
                     data.vmix_rps.toFixed(2) + ' req/s';
                 document.getElementById('program-rps-badge').textContent =
                     data.program_rps.toFixed(2) + ' req/s';
+
+                var feeds = data.feeds || {};
+                Object.keys(feedCharts).forEach(function (slug) {
+                    var rps = feeds[slug] || 0.0;
+                    pushPoint(feedCharts[slug], rps);
+                    var badge = document.querySelector('.feed-rps-badge[data-feed-slug="' + slug + '"]');
+                    if (badge) badge.textContent = rps.toFixed(2) + ' req/s';
+                });
             })
             .catch(function () { /* ignore transient errors */ });
     }
@@ -173,6 +225,9 @@
         setTimeout(function () {
             updateChartTheme(vmixChart, 'indigo');
             updateChartTheme(programChart, 'emerald');
+            Object.keys(feedCharts).forEach(function (slug) {
+                updateChartTheme(feedCharts[slug], 'amber');
+            });
         }, 50);
     });
 

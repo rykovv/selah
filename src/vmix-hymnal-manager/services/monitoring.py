@@ -14,8 +14,9 @@ _request_log: Dict[str, deque] = {
 
 def record_request(path: str) -> None:
     """Append the current timestamp to the log for the given path."""
-    if path in _request_log:
-        _request_log[path].append(time.time())
+    if path not in _request_log:
+        _request_log[path] = deque(maxlen=3600)
+    _request_log[path].append(time.time())
 
 
 def get_rps(path: str, window: int = WINDOW_SECONDS) -> float:
