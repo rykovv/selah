@@ -33,6 +33,8 @@ def page_programs(request: Request, db: Session = Depends(get_db)):
         .order_by(ServiceProgramModel.last_used.desc(), ServiceProgramModel.id.desc())
         .all()
     )
+    for prog in programs:
+        prog.items = sort_program_items(prog.items)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "programs.html", {"request": request, "programs": programs}
