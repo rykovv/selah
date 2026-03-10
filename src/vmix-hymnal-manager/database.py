@@ -72,6 +72,20 @@ _TABLE_SQL = [
         name VARCHAR,
         filename VARCHAR
     )""",
+    """CREATE TABLE IF NOT EXISTS data_tables (
+        id INTEGER PRIMARY KEY,
+        name VARCHAR,
+        slug VARCHAR UNIQUE,
+        columns_json TEXT DEFAULT '[]',
+        created_at DATETIME,
+        updated_at DATETIME
+    )""",
+    """CREATE TABLE IF NOT EXISTS data_table_rows (
+        id INTEGER PRIMARY KEY,
+        table_id INTEGER REFERENCES data_tables(id),
+        sequence INTEGER,
+        data_json TEXT DEFAULT '{}'
+    )""",
     """CREATE TABLE IF NOT EXISTS app_settings (
         key VARCHAR PRIMARY KEY,
         value VARCHAR

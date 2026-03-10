@@ -1,4 +1,6 @@
 import os
+import re
+import unicodedata
 
 
 def clean_text(text: str) -> str:
@@ -31,6 +33,23 @@ def get_slides_by_type(hymn, preferred_type: str = "PPT"):
         fallback = "VMIX" if preferred_type == "PPT" else "PPT"
         slides = [s for s in hymn.slides if s.type == fallback or s.type is None]
     return sorted(slides, key=lambda x: x.order)
+
+
+def generate_slug(name: str) -> str:
+    """Generate a URL-safe slug from a name."""
+    slug = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    slug = slug.lower().strip()
+    slug = re.sub(r"[^a-z0-9]+", "-", slug)
+    slug = slug.strip("-")
+    return slug or "table"
+
+
+def sort_data_table_rows(rows):
+    """Sort data table rows by sequence (None pushed to end) then by id."""
+    return sorted(
+        rows,
+        key=lambda x: (x.sequence if x.sequence is not None else 9999, x.id),
+    )
 
 
 def sanitize_filename(filename: str) -> str:

@@ -90,6 +90,34 @@ class PresentationTemplateModel(Base):
     filename = Column(String)
 
 
+class DataTableModel(Base):
+    __tablename__ = "data_tables"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    slug = Column(String, unique=True, index=True)
+    columns_json = Column(Text, default="[]")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    rows = relationship(
+        "DataTableRowModel",
+        back_populates="table",
+        cascade="all, delete-orphan",
+    )
+
+
+class DataTableRowModel(Base):
+    __tablename__ = "data_table_rows"
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_id = Column(Integer, ForeignKey("data_tables.id"))
+    sequence = Column(Integer)
+    data_json = Column(Text, default="{}")
+
+    table = relationship("DataTableModel", back_populates="rows")
+
+
 class AppSettingModel(Base):
     __tablename__ = "app_settings"
 
