@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="cm-page-header">
+    <div>
+        <h2>Data Tables</h2>
+        <p class="cm-page-desc">Custom data feeds for vMix.</p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1"
+            data-bs-toggle="modal" data-bs-target="#newTableModal">
+            <i class="bi bi-plus-lg"></i>
+            New Table
+        </button>
+    </div>
+</div>
+
+{% if not tables %}
+<div class="cm-empty py-5">
+    <i class="bi bi-table cm-empty-icon"></i>
+    <p>No data tables yet.</p>
+    <button type="button" class="btn btn-primary btn-sm mt-2"
+        data-bs-toggle="modal" data-bs-target="#newTableModal">
+        <i class="bi bi-plus-lg me-1"></i>Create your first table
+    </button>
+</div>
+
+{% else %}
+<div class="cm-prog-grid">
+    {% for t in tables %}
+    <div class="cm-prog-card">
+        <div style="font-size: 1rem; font-weight: 700; color: var(--bs-body-color); margin-bottom: 0.5rem; line-height: 1.3;">
+            {{ t.name }}
+        </div>
+
+        <div class="d-flex align-items-center gap-3 text-secondary flex-grow-1" style="font-size: 0.78rem; margin-bottom: 0.75rem;">
+            <span class="d-flex align-items-center gap-1">
+                <i class="bi bi-columns-gap"></i>
+                {{ t._columns | length }} col{{ 's' if t._columns | length != 1 else '' }}
+            </span>
+            <span class="d-flex align-items-center gap-1">
+                <i class="bi bi-list-ol"></i>
+                {{ t._row_count }} row{{ 's' if t._row_count != 1 else '' }}
+            </span>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mb-3 px-2 py-1 rounded-2"
+            style="background: var(--bs-tertiary-bg); font-size: 0.72rem;">
+            <i class="bi bi-broadcast text-success" style="font-size: 0.7rem;"></i>
+            <code class="text-truncate flex-grow-1" style="font-size: 0.72rem;">/api/feed/{{ t.slug }}</code>
+        </div>
+
+        <div class="d-flex gap-2 mt-auto">
+            <a href="/data-tables/{{ t.id }}"
+                class="btn btn-sm btn-outline-primary flex-grow-1 d-flex align-items-center justify-content-center gap-1">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                hx-delete="/data-tables/{{ t.id }}"
+                hx-confirm="Delete &quot;{{ t.name }}&quot; and all its data?">
+                <i class="bi bi-trash3"></i>
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── New Table Modal ── -->
+<div class="modal fade" id="newTableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="/data-tables/new" method="post" id="new-table-form">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <span class="cm-chip cm-chip-indigo"><i class="bi bi-table"></i></span>
+                        New Data Table
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Table Name</label>
+                        <input type="text" name="name" class="form-control"
+                            placeholder="e.g. Bible Verses" required autofocus>
+                    </div>
+
+                    <label class="form-label fw-semibold">Columns</label>
+                    <div id="column-inputs">
+                        <div class="input-group mb-2">
+                            <input type="text" name="columns" class="form-control"
+                                placeholder="Column name" required>
+                            <button type="button" class="btn btn-outline-danger"
+                                onclick="removeCol(this)" title="Remove">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="input-group mb-2">
+                            <input type="text" name="columns" class="form-control"
+                                placeholder="Column name" required>
+                            <button type="button" class="btn btn-outline-danger"
+                                onclick="removeCol(this)" title="Remove">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                        onclick="addColumnInput()">
+                        <i class="bi bi-plus-lg"></i> Add Column
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
+                        <i class="bi bi-check-lg"></i> Create Table
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function addColumnInput() {
+    var container = document.getElementById('column-inputs');
+    var div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML =
+        '<input type="text" name="columns" class="form-control" placeholder="Column name" required>' +
+        '<button type="button" class="btn btn-outline-danger" onclick="removeCol(this)" title="Remove">' +
+        '<i class="bi bi-x-lg"></i></button>';
+    container.appendChild(div);
+    div.querySelector('input').focus();
+}
+
+function removeCol(btn) {
+    var container = document.getElementById('column-inputs');
+    if (container.children.length <= 1) {
+        cmToast('At least one column is required.', 'warning');
+        return;
+    }
+    btn.closest('.input-group').remove();
+}
+</script>
+{% endblock %}

@@ -8,6 +8,7 @@ def register_routes(app: FastAPI):
     from routes.programs import router as programs_router
     from routes.templates_mgr import router as templates_router
     from routes.api import router as api_router
+    from routes.data_tables import router as data_tables_router
     from routes.monitoring import router as monitoring_router
     from routes.settings import router as settings_router
 
@@ -16,5 +17,6 @@ def register_routes(app: FastAPI):
     app.include_router(programs_router)
     app.include_router(templates_router)
     app.include_router(api_router)
+    app.include_router(data_tables_router)
     app.include_router(monitoring_router)
     app.include_router(settings_router)

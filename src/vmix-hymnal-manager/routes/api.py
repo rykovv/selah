@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import (
-    AppSettingModel, HymnModel, ServicePlanHymnModel, ServiceProgramModel,
-    VmixRow,
+    AppSettingModel, DataTableModel, HymnModel, ServicePlanHymnModel,
+    ServiceProgramModel, VmixRow,
 )
+import json
+
 from services.program_service import serialize_program_items
 from utils import get_slides_by_type
 
@@ -75,6 +77,23 @@ def get_current_program_json(db: Session = Depends(get_db)):
     if not prog:
         return [{"title": "No Active Program", "subtitle": "Select one in Dashboard"}]
     return serialize_program_items(prog)
+
+
+# ---------------------------------------------------------------------------
+# Data table feeds
+# ---------------------------------------------------------------------------
+
+@router.get("/api/feed/{slug}")
+def get_data_table_feed(slug: str, db: Session = Depends(get_db)):
+    """Return JSON array of row objects for a data table."""
+    table = db.query(DataTableModel).filter(DataTableModel.slug == slug).first()
+    if not table:
+        return JSONResponse({"detail": "Feed not found"}, status_code=404)
+    rows = sorted(
+        table.rows,
+        key=lambda r: (r.sequence if r.sequence is not None else 9999, r.id),
+    )
+    return [json.loads(r.data_json) for r in rows]
 
 
 # ---------------------------------------------------------------------------

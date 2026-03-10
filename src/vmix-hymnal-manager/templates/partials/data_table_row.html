@@ -1,0 +1,30 @@
+<tr id="row-{{ row.id }}" data-id="{{ row.id }}" class="align-top">
+
+    <td class="ps-3 handle" style="width: 36px; cursor: move; vertical-align: middle;">
+        <i class="bi bi-grip-vertical text-secondary opacity-50"></i>
+    </td>
+
+    {% for col in columns %}
+    <td class="p-2">
+        <textarea
+            class="form-control border-0 bg-transparent shadow-none auto-expand p-1"
+            rows="1" name="col__{{ col }}" placeholder="{{ col }}..."
+            hx-post="/data-tables/row/{{ row.id }}/update"
+            hx-trigger="change"
+            hx-include="closest tr">{{ data.get(col, '') }}</textarea>
+    </td>
+    {% endfor %}
+
+    <td class="text-end align-middle p-2" style="width: 48px;">
+        <button class="btn btn-sm border-0 p-1 d-flex align-items-center text-danger"
+            style="opacity: 0.4; transition: opacity 0.15s;"
+            onmouseover="this.style.opacity=1"
+            onmouseout="this.style.opacity=0.4"
+            title="Remove row"
+            hx-delete="/data-tables/row/{{ row.id }}"
+            hx-target="#row-{{ row.id }}"
+            hx-swap="outerHTML">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </td>
+</tr>
