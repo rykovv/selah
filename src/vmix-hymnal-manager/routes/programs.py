@@ -1,6 +1,7 @@
 """Service program CRUD, items, reorder, activate, and PPT download."""
 
 import os
+import re
 from datetime import datetime, timezone
 from typing import List
 
@@ -152,6 +153,12 @@ def update_item(
     )
     if not item:
         return Response("Item not found", status_code=404)
+    if tag and re.fullmatch(r"hymn_\d+", tag):
+        return Response(
+            f'Tag "{tag}" is reserved for hymn insertion in templates. '
+            "Use a different tag name.",
+            status_code=400,
+        )
     item.title = title
     item.subtitle = subtitle
     item.tag = tag

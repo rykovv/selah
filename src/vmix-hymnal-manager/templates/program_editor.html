@@ -172,5 +172,14 @@
 
     document.addEventListener('DOMContentLoaded', initAutoResize);
     document.body.addEventListener('htmx:afterSwap', initAutoResize);
+
+    // Block reserved "hymn_N" tag pattern before HTMX sends the request
+    document.body.addEventListener('htmx:configRequest', function (evt) {
+        var tag = evt.detail.parameters.tag;
+        if (tag && /^hymn_\d+$/i.test(tag) && evt.detail.path.indexOf('/update') !== -1) {
+            evt.preventDefault();
+            cmToast('Tag "' + tag + '" is reserved for hymn insertion in templates. Use a different tag name.', 'error');
+        }
+    });
 </script>
 {% endblock %}
