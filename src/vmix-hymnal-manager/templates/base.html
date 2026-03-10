@@ -671,6 +671,107 @@
             border-color: var(--bs-primary);
             box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.12);
         }
+        /* ─── Toast notifications ─── */
+        .cm-toast-container {
+            position: fixed;
+            bottom: 1.25rem;
+            right: 1.25rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+
+        .cm-toast {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            max-width: 380px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            transform: translateX(120%);
+            opacity: 0;
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                        opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .cm-toast.cm-toast-show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .cm-toast.cm-toast-hide {
+            transform: translateX(120%);
+            opacity: 0;
+        }
+
+        .cm-toast-icon {
+            font-size: 1.125rem;
+            flex-shrink: 0;
+        }
+
+        .cm-toast-msg {
+            flex: 1;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .cm-toast-close {
+            background: none;
+            border: none;
+            color: inherit;
+            opacity: 0.5;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1rem;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+
+        .cm-toast-close:hover {
+            opacity: 1;
+        }
+
+        .cm-toast-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .cm-toast-success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .cm-toast-warning {
+            background: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        [data-bs-theme="dark"] .cm-toast-error {
+            background: #3b1318;
+            color: #fca5a5;
+            border-color: #6b2028;
+        }
+
+        [data-bs-theme="dark"] .cm-toast-success {
+            background: #0d2818;
+            color: #86efac;
+            border-color: #1a4d2e;
+        }
+
+        [data-bs-theme="dark"] .cm-toast-warning {
+            background: #302010;
+            color: #fcd34d;
+            border-color: #5c3d1a;
+        }
     </style>
 </head>
 
@@ -722,7 +823,68 @@
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Toast container -->
+    <div class="cm-toast-container" id="cm-toast-container"></div>
+
     <script>
+        /* ─── Global toast notification ─── */
+        (function () {
+            var _icons = {
+                error: 'bi-x-circle-fill',
+                success: 'bi-check-circle-fill',
+                warning: 'bi-exclamation-triangle-fill'
+            };
+
+            window.cmToast = function (message, type) {
+                type = type || 'error';
+                var container = document.getElementById('cm-toast-container');
+                var toast = document.createElement('div');
+                toast.className = 'cm-toast cm-toast-' + type;
+                toast.innerHTML =
+                    '<i class="cm-toast-icon bi ' + (_icons[type] || _icons.error) + '"></i>' +
+                    '<span class="cm-toast-msg">' + message + '</span>' +
+                    '<button class="cm-toast-close" aria-label="Close">&times;</button>';
+
+                toast.querySelector('.cm-toast-close').addEventListener('click', function () {
+                    dismiss(toast);
+                });
+
+                container.appendChild(toast);
+                /* Trigger reflow then animate in */
+                toast.offsetHeight;
+                toast.classList.add('cm-toast-show');
+
+                var timer = setTimeout(function () { dismiss(toast); }, 4500);
+
+                function dismiss(el) {
+                    clearTimeout(timer);
+                    el.classList.remove('cm-toast-show');
+                    el.classList.add('cm-toast-hide');
+                    setTimeout(function () { el.remove(); }, 350);
+                }
+            };
+        })();
+
+        /* ─── Global HTMX error handler ─── */
+        document.addEventListener('htmx:responseError', function (evt) {
+            cmToast('Network error — could not reach the server.', 'error');
+        });
+
+        document.addEventListener('htmx:afterRequest', function (evt) {
+            var xhr = evt.detail.xhr;
+            if (!xhr || xhr.status < 400) return;
+
+            var msg = 'Something went wrong (HTTP ' + xhr.status + ')';
+            try {
+                var body = JSON.parse(xhr.responseText);
+                if (body.detail) msg = body.detail;
+            } catch (e) {
+                var text = (xhr.responseText || '').trim();
+                if (text && text.length < 200) msg = text;
+            }
+            cmToast(msg, 'error');
+        });
+
         (function () {
             function applyTheme(t) {
                 document.documentElement.setAttribute('data-bs-theme', t);

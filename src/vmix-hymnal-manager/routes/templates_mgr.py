@@ -33,8 +33,11 @@ def upload_template(
     safe_name = sanitize_filename(file.filename)
     file_location = os.path.join(settings.UPLOAD_DIR, safe_name)
 
-    with open(file_location, "wb+") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    try:
+        with open(file_location, "wb+") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as exc:
+        return Response(f"Failed to save file: {exc}", status_code=500)
 
     new_tmpl = PresentationTemplateModel(name=name, filename=safe_name)
     db.add(new_tmpl)

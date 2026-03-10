@@ -88,6 +88,8 @@ def edit_program(id: int, request: Request, db: Session = Depends(get_db)):
         .filter(ServiceProgramModel.id == id)
         .first()
     )
+    if not prog:
+        return Response("Program not found", status_code=404)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "partials/program_editor.html", {"request": request, "program": prog}
@@ -106,6 +108,8 @@ def update_program_meta(
         .filter(ServiceProgramModel.id == id)
         .first()
     )
+    if not prog:
+        return Response("Program not found", status_code=404)
     prog.name = name
     prog.template_id = template_id
     db.commit()
@@ -118,6 +122,9 @@ def update_program_meta(
 
 @router.post("/programs/{id}/add_item")
 def add_program_item(id: int, request: Request, db: Session = Depends(get_db)):
+    prog = db.query(ServiceProgramModel).filter(ServiceProgramModel.id == id).first()
+    if not prog:
+        return Response("Program not found", status_code=404)
     new_item = ServiceProgramItemModel(
         program_id=id, title="", subtitle="", sequence=999
     )
@@ -143,6 +150,8 @@ def update_item(
         .filter(ServiceProgramItemModel.id == item_id)
         .first()
     )
+    if not item:
+        return Response("Item not found", status_code=404)
     item.title = title
     item.subtitle = subtitle
     item.tag = tag
@@ -244,6 +253,9 @@ def download_program_ppt(
     if not prog or not prog.template_id:
         return Response("No template assigned.", status_code=400)
 
+    if not prog.items:
+        return Response("Service program is empty — add items first.", status_code=400)
+
     template = (
         db.query(PresentationTemplateModel)
         .filter(PresentationTemplateModel.id == prog.template_id)
@@ -262,7 +274,10 @@ def download_program_ppt(
         title_size=title_size,
         lyrics_size=lyrics_size,
     )
-    output = generate_program_pptx(prog, db, input_path, config=cfg)
+    try:
+        output = generate_program_pptx(prog, db, input_path, config=cfg)
+    except Exception as exc:
+        return Response(f"Failed to generate PowerPoint: {exc}", status_code=500)
 
     filename = f"{prog.name.replace(' ', '_')}.pptx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}

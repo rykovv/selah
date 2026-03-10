@@ -54,6 +54,9 @@ def page_hymns_manager(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/plan/add")
 def add_to_plan(hymn_id: int = Form(...), db: Session = Depends(get_db)):
+    hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
+    if not hymn:
+        return Response("Hymn not found", status_code=404)
     last_item = (
         db.query(ServicePlanHymnModel)
         .order_by(ServicePlanHymnModel.sequence.desc())
@@ -162,6 +165,8 @@ def save_hymn(
     is_new = hymn_id is None
     if hymn_id:
         hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
+        if not hymn:
+            return JSONResponse({"detail": "Hymn not found"}, status_code=404)
         hymn.number = number
         hymn.title = title
         db.query(SlideModel).filter(SlideModel.hymn_id == hymn_id).delete()
@@ -306,7 +311,10 @@ def download_ppt(
         title_size=title_size,
         lyrics_size=lyrics_size,
     )
-    output = generate_hymn_plan_pptx(plan, aspect=aspect, config=cfg)
+    try:
+        output = generate_hymn_plan_pptx(plan, aspect=aspect, config=cfg)
+    except Exception as exc:
+        return Response(f"Failed to generate PowerPoint: {exc}", status_code=500)
 
     filename = f"Sabbath_Service_{aspect.replace(':', '')}.pptx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}

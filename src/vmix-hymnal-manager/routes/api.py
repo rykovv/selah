@@ -59,6 +59,8 @@ def get_program_json(id: int, db: Session = Depends(get_db)):
         .filter(ServiceProgramModel.id == id)
         .first()
     )
+    if not prog:
+        return JSONResponse({"detail": "Program not found"}, status_code=404)
     return serialize_program_items(prog)
 
 

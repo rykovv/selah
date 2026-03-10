@@ -352,7 +352,13 @@
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: fd
         })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) {
+                return r.json().catch(function() { return { detail: 'Failed to save hymn' }; })
+                    .then(function(body) { throw new Error(body.detail || 'Failed to save hymn'); });
+            }
+            return r.json();
+        })
         .then(function(data) {
             /* For new hymns, store the id so subsequent saves are updates */
             if (data.is_new && data.hymn_id) {
@@ -383,7 +389,10 @@
             /* Refresh the sidebar library list */
             htmx.trigger(document.body, 'refreshLibrary');
         })
-        .catch(function() {
+        .catch(function(err) {
+            var msg = err.message || 'Failed to save hymn';
+            if (typeof cmToast === 'function') cmToast(msg, 'error');
+
             icon.className = 'bi bi-exclamation-triangle';
             label.textContent = 'Error';
             btn.classList.remove('btn-success');
