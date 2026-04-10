@@ -1,5 +1,6 @@
 """PowerPoint generation for hymn plans and service programs."""
 
+import json
 import re
 from io import BytesIO
 from typing import Optional
@@ -278,6 +279,42 @@ def generate_program_pptx(
                         if pattern in full_text:
                             full_text = full_text.replace(pattern, replacement)
                             paragraph.text = full_text
+
+    # --- PHASE 1.5: DATA TABLE PATTERN SUBSTITUTION ---
+    from models import DataTablePatternModel, DataTableRowModel
+
+    dt_patterns = (
+        db.query(DataTablePatternModel)
+        .filter(DataTablePatternModel.is_enabled == True)
+        .all()
+    )
+
+    if dt_patterns:
+        dt_replacements = {}
+        for dtp in dt_patterns:
+            rows = (
+                db.query(DataTableRowModel)
+                .filter(DataTableRowModel.table_id == dtp.table_id)
+                .order_by(DataTableRowModel.sequence, DataTableRowModel.id)
+                .all()
+            )
+            for idx, row in enumerate(rows, start=1):
+                data = json.loads(row.data_json)
+                value = data.get(dtp.column_name, "")
+                tag = "{{" + dtp.pattern_name + "_" + str(idx) + "}}"
+                dt_replacements[tag] = str(value)
+
+        if dt_replacements:
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if shape.has_text_frame:
+                        for paragraph in shape.text_frame.paragraphs:
+                            full_text = paragraph.text
+                            for pattern, replacement in dt_replacements.items():
+                                if pattern in full_text:
+                                    full_text = full_text.replace(pattern, replacement)
+                            if full_text != paragraph.text:
+                                paragraph.text = full_text
 
     # --- PHASE 2: HYMN EXPLOSION ---
     # Iterate backwards to maintain valid indices for upcoming slides
