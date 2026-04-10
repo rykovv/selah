@@ -316,7 +316,9 @@ def download_ppt(
     except Exception as exc:
         return Response(f"Failed to generate PowerPoint: {exc}", status_code=500)
 
-    filename = f"Sabbath_Service_{aspect.replace(':', '')}.pptx"
+    from datetime import datetime
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"Sabbath_Service_{aspect.replace(':', '')}_{ts}.pptx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(
         output,
