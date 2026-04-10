@@ -7,7 +7,7 @@ from typing import Dict
 WINDOW_SECONDS = 1
 
 _request_log: Dict[str, deque] = {
-    "/api/vmix": deque(maxlen=3600),
+    "/api/hymns/service": deque(maxlen=3600),
     "/api/program/current": deque(maxlen=3600),
 }
 

@@ -27,7 +27,7 @@ def monitoring_stats(window: int = Query(default=WINDOW_SECONDS, ge=1, le=300)):
     """Return current requests-per-second for monitored endpoints."""
     stats = get_all_stats(window)
     result = {
-        "vmix_rps": stats.get("/api/vmix", 0.0),
+        "hymns_rps": stats.get("/api/hymns/service", 0.0),
         "program_rps": stats.get("/api/program/current", 0.0),
         "feeds": {},
     }

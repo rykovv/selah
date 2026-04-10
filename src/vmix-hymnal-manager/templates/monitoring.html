@@ -14,7 +14,7 @@
 
 <div class="row g-4">
 
-    <!-- /api/vmix -->
+    <!-- /api/hymns/service -->
     <div class="col-md-6">
         <div class="cm-card">
             <div class="cm-card-header">
@@ -22,12 +22,12 @@
                     <span class="cm-chip cm-chip-indigo">
                         <i class="bi bi-broadcast"></i>
                     </span>
-                    /api/vmix
+                    /api/hymns/service
                 </h5>
-                <span class="cm-pill cm-pill-primary" id="vmix-rps-badge">0.00 req/s</span>
+                <span class="cm-pill cm-pill-primary" id="hymns-rps-badge">0.00 req/s</span>
             </div>
             <div style="padding: 1rem; height: 260px;">
-                <canvas id="vmixChart"></canvas>
+                <canvas id="hymnsChart"></canvas>
             </div>
         </div>
     </div>
@@ -168,7 +168,7 @@
         });
     }
 
-    var vmixChart    = makeChart('vmixChart', 'indigo');
+    var hymnsChart    = makeChart('hymnsChart', 'indigo');
     var programChart = makeChart('programChart', 'emerald');
 
     /* Build feed charts dynamically */
@@ -198,11 +198,11 @@
         fetch('/api/monitoring/stats')
             .then(function (res) { return res.json(); })
             .then(function (data) {
-                pushPoint(vmixChart, data.vmix_rps);
+                pushPoint(hymnsChart, data.hymns_rps);
                 pushPoint(programChart, data.program_rps);
 
-                document.getElementById('vmix-rps-badge').textContent =
-                    data.vmix_rps.toFixed(2) + ' req/s';
+                document.getElementById('hymns-rps-badge').textContent =
+                    data.hymns_rps.toFixed(2) + ' req/s';
                 document.getElementById('program-rps-badge').textContent =
                     data.program_rps.toFixed(2) + ' req/s';
 
@@ -223,7 +223,7 @@
     /* Re-apply chart colours on theme toggle */
     document.getElementById('cm-theme-toggle').addEventListener('click', function () {
         setTimeout(function () {
-            updateChartTheme(vmixChart, 'indigo');
+            updateChartTheme(hymnsChart, 'indigo');
             updateChartTheme(programChart, 'emerald');
             Object.keys(feedCharts).forEach(function (slug) {
                 updateChartTheme(feedCharts[slug], 'amber');

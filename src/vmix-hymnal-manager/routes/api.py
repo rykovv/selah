@@ -19,7 +19,7 @@ from utils import get_slides_by_type
 router = APIRouter()
 
 
-@router.get("/api/vmix", response_model=List[VmixRow])
+@router.get("/api/hymns/service", response_model=List[VmixRow])
 def get_vmix_feed(db: Session = Depends(get_db)):
     """Flatten scheduled hymns into the row format vMix expects."""
     service_items = (
