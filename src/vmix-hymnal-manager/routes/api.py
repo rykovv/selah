@@ -97,6 +97,17 @@ def get_data_table_feed(slug: str, db: Session = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------------
+# Version
+# ---------------------------------------------------------------------------
+
+@router.get("/api/version")
+def get_version():
+    """Return the application version."""
+    from config import settings
+    return {"version": settings.APP_VERSION}
+
+
+# ---------------------------------------------------------------------------
 # App settings
 # ---------------------------------------------------------------------------
 
