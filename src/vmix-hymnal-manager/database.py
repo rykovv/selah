@@ -90,6 +90,13 @@ _TABLE_SQL = [
         sequence INTEGER,
         data_json TEXT DEFAULT '{}'
     )""",
+    """CREATE TABLE IF NOT EXISTS data_table_patterns (
+        id INTEGER PRIMARY KEY,
+        table_id INTEGER UNIQUE REFERENCES data_tables(id),
+        pattern_name VARCHAR,
+        column_name VARCHAR,
+        is_enabled BOOLEAN DEFAULT 0
+    )""",
     """CREATE TABLE IF NOT EXISTS app_settings (
         key VARCHAR PRIMARY KEY,
         value VARCHAR
@@ -132,9 +139,22 @@ def _migrate_1_0_0(conn: sqlite3.Connection):
         )
 
 
+def _migrate_1_1_0(conn: sqlite3.Connection):
+    """Add data_table_patterns table."""
+    cursor = conn.cursor()
+    cursor.execute("""CREATE TABLE IF NOT EXISTS data_table_patterns (
+        id INTEGER PRIMARY KEY,
+        table_id INTEGER UNIQUE REFERENCES data_tables(id),
+        pattern_name VARCHAR,
+        column_name VARCHAR,
+        is_enabled BOOLEAN DEFAULT 0
+    )""")
+
+
 # Ordered list of migrations: (version, description, function)
 MIGRATIONS: List[Tuple[str, str, Callable]] = [
     ("1.0.0", "baseline schema", _migrate_1_0_0),
+    ("1.1.0", "data table patterns", _migrate_1_1_0),
 ]
 
 

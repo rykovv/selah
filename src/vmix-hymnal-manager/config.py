@@ -3,7 +3,7 @@ import os
 
 
 class Settings:
-    APP_VERSION: str = "1.0.0a"
+    APP_VERSION: str = "1.1.0"
     DATABASE_URL: str = "sqlite:///./hymns.db"
     DEFAULT_DB_PATH: str = "hymns.db"
     UPLOAD_DIR: str = "templates"

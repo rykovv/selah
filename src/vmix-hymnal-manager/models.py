@@ -105,6 +105,12 @@ class DataTableModel(Base):
         back_populates="table",
         cascade="all, delete-orphan",
     )
+    pattern = relationship(
+        "DataTablePatternModel",
+        back_populates="table",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class DataTableRowModel(Base):
@@ -116,6 +122,18 @@ class DataTableRowModel(Base):
     data_json = Column(Text, default="{}")
 
     table = relationship("DataTableModel", back_populates="rows")
+
+
+class DataTablePatternModel(Base):
+    __tablename__ = "data_table_patterns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_id = Column(Integer, ForeignKey("data_tables.id"), unique=True)
+    pattern_name = Column(String)
+    column_name = Column(String)
+    is_enabled = Column(Boolean, default=False)
+
+    table = relationship("DataTableModel", back_populates="pattern")
 
 
 class AppSettingModel(Base):
