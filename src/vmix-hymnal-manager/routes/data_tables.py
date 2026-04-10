@@ -1,6 +1,7 @@
 """Data Tables — custom vMix data feeds with user-defined columns and rows."""
 
 import json
+import re
 from datetime import datetime, timezone
 from typing import List
 
@@ -9,7 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import DataTableModel, DataTableRowModel
+from models import DataTableModel, DataTableRowModel, DataTablePatternModel
 from utils import generate_slug, sort_data_table_rows
 
 router = APIRouter()
@@ -92,12 +93,20 @@ def page_data_table_editor(
             "table": table,
             "columns": columns,
             "row_data": row_data,
+            "pattern": table.pattern,
         },
     )
 
 
 @router.delete("/data-tables/{table_id}")
 def delete_data_table(table_id: int, db: Session = Depends(get_db)):
+    # Explicitly delete pattern (bulk delete skips ORM cascades)
+    db.query(DataTablePatternModel).filter(
+        DataTablePatternModel.table_id == table_id
+    ).delete()
+    db.query(DataTableRowModel).filter(
+        DataTableRowModel.table_id == table_id
+    ).delete()
     db.query(DataTableModel).filter(DataTableModel.id == table_id).delete()
     db.commit()
     return Response(
@@ -148,8 +157,94 @@ def update_columns(
         new_data = {col: old_data.get(col, "") for col in new_cols}
         row.data_json = json.dumps(new_data)
 
+    # Auto-disable pattern if its column was removed
+    if table.pattern and table.pattern.column_name not in new_cols:
+        table.pattern.is_enabled = False
+        table.pattern.column_name = ""
+
     db.commit()
     return RedirectResponse(f"/data-tables/{table_id}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Pattern configuration
+# ---------------------------------------------------------------------------
+
+@router.post("/data-tables/{table_id}/update_pattern")
+def update_pattern(
+    table_id: int,
+    pattern_enabled: bool = Form(False),
+    pattern_name: str = Form(""),
+    pattern_column: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    table = db.query(DataTableModel).filter(DataTableModel.id == table_id).first()
+    if not table:
+        return Response("Table not found", status_code=404)
+
+    name_clean = pattern_name.strip().lower()
+
+    # Validate when enabling
+    if pattern_enabled:
+        if not name_clean:
+            return Response("Pattern name is required when enabled.", status_code=400)
+
+        if not re.fullmatch(r"[a-z][a-z0-9_]*", name_clean):
+            return Response(
+                "Pattern name must start with a letter and contain only "
+                "lowercase letters, digits, or underscores.",
+                status_code=400,
+            )
+
+        if name_clean.startswith("hymn"):
+            return Response(
+                'Pattern names starting with "hymn" are reserved.',
+                status_code=400,
+            )
+
+        columns = json.loads(table.columns_json)
+        if pattern_column not in columns:
+            return Response(
+                f"Column '{pattern_column}' not found in table.", status_code=400
+            )
+
+        # Unique pattern name across all tables
+        existing = (
+            db.query(DataTablePatternModel)
+            .filter(
+                DataTablePatternModel.pattern_name == name_clean,
+                DataTablePatternModel.table_id != table_id,
+            )
+            .first()
+        )
+        if existing:
+            return Response(
+                f'Pattern name "{name_clean}" is already used by another table.',
+                status_code=400,
+            )
+
+    pattern = (
+        db.query(DataTablePatternModel)
+        .filter(DataTablePatternModel.table_id == table_id)
+        .first()
+    )
+
+    if pattern:
+        pattern.pattern_name = name_clean
+        pattern.column_name = pattern_column
+        pattern.is_enabled = pattern_enabled
+    else:
+        pattern = DataTablePatternModel(
+            table_id=table_id,
+            pattern_name=name_clean,
+            column_name=pattern_column,
+            is_enabled=pattern_enabled,
+        )
+        db.add(pattern)
+
+    _touch(table)
+    db.commit()
+    return Response(status_code=200)
 
 
 # ---------------------------------------------------------------------------

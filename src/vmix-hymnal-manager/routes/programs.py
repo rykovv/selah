@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from models import (
+    DataTablePatternModel,
     PresentationTemplateModel,
     ServiceProgramItemModel,
     ServiceProgramModel,
@@ -67,11 +68,21 @@ def program_editor_page(id: int, request: Request, db: Session = Depends(get_db)
 
     prog.items = sort_program_items(prog.items)
     all_templates = db.query(PresentationTemplateModel).all()
+    active_patterns = (
+        db.query(DataTablePatternModel)
+        .filter(DataTablePatternModel.is_enabled == True)
+        .all()
+    )
 
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "program_editor.html",
-        {"request": request, "program": prog, "templates": all_templates},
+        {
+            "request": request,
+            "program": prog,
+            "templates": all_templates,
+            "active_patterns": active_patterns,
+        },
     )
 
 
@@ -159,6 +170,25 @@ def update_item(
             "Use a different tag name.",
             status_code=400,
         )
+    # Check conflict with enabled data table patterns (e.g. tag "schedule_1"
+    # would clash with a data table pattern named "schedule")
+    if tag:
+        m = re.fullmatch(r"([a-z][a-z0-9_]*)_\d+", tag)
+        if m:
+            conflict = (
+                db.query(DataTablePatternModel)
+                .filter(
+                    DataTablePatternModel.pattern_name == m.group(1),
+                    DataTablePatternModel.is_enabled == True,
+                )
+                .first()
+            )
+            if conflict:
+                return Response(
+                    f'Tag "{tag}" conflicts with data table pattern '
+                    f'"{m.group(1)}". Use a different tag name.',
+                    status_code=400,
+                )
     item.title = title
     item.subtitle = subtitle
     item.tag = tag
