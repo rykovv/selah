@@ -139,8 +139,13 @@ MIGRATIONS: List[Tuple[str, str, Callable]] = [
 
 
 def _version_tuple(v: str):
-    """Convert '1.2.3' to (1, 2, 3) for comparison."""
-    return tuple(int(x) for x in v.split("."))
+    """Convert '1.2.3' or '1.2.3a' to a comparable tuple.
+
+    Strips non-numeric suffixes (e.g. 'a', 'b', 'rc1') from each part
+    so that '1.0.0a' compares equal to '1.0.0' for migration purposes.
+    """
+    import re
+    return tuple(int(re.sub(r"[^0-9].*", "", x)) for x in v.split("."))
 
 
 def get_schema_version(db_path: str) -> str:
