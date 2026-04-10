@@ -130,6 +130,55 @@
     </div>
 </div>
 
+<!-- ── Pattern Reference ── -->
+<div class="cm-card mt-4">
+    <div class="cm-card-header">
+        <h5 class="cm-title">
+            <span class="cm-chip cm-chip-violet">
+                <i class="bi bi-braces-asterisk"></i>
+            </span>
+            PPT Pattern Reference
+        </h5>
+    </div>
+    <div class="p-4" style="font-size: 0.82rem; line-height: 1.7;">
+        <p class="mb-2 text-secondary">
+            The system scans your PowerPoint template for <code>{{ '{{' }}...{{ '}}' }}</code> tags
+            and replaces them in the following order:
+        </p>
+        <table class="table table-sm mb-0" style="font-size: 0.82rem;">
+            <thead>
+                <tr>
+                    <th class="border-bottom text-secondary" style="width: 35%;">Pattern</th>
+                    <th class="border-bottom text-secondary">Source</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>{{ '{{' }}tag{{ '}}' }}</code></td>
+                    <td>Program item — replaced by the <em>Person / Description</em> of the item whose PPT Tag matches</td>
+                </tr>
+                {% if active_patterns %}
+                {% for p in active_patterns %}
+                <tr>
+                    <td><code>{{ '{{' }}{{ p.pattern_name }}_1{{ '}}' }}</code>, <code>{{ '{{' }}{{ p.pattern_name }}_2{{ '}}' }}</code>, ...</td>
+                    <td>Data table <strong>{{ p.table.name }}</strong> — column <em>{{ p.column_name }}</em>, one per row</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td><code>{{ '{{' }}name_N{{ '}}' }}</code></td>
+                    <td class="text-secondary fst-italic">No data table patterns enabled. Configure in Data Tables.</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td><code>{{ '{{' }}hymn_1{{ '}}' }}</code>, <code>{{ '{{' }}hymn_2{{ '}}' }}</code>, ...</td>
+                    <td>Service plan hymn — exploded into title + lyrics slides</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <script>
     var _saveTimer = null;
     function flashSaved() {
@@ -173,12 +222,28 @@
     document.addEventListener('DOMContentLoaded', initAutoResize);
     document.body.addEventListener('htmx:afterSwap', initAutoResize);
 
-    // Block reserved "hymn_N" tag pattern before HTMX sends the request
+    // Block reserved tag patterns before HTMX sends the request
+    var _reservedPatterns = ['hymn'];
+    {% if active_patterns %}
+    {% for p in active_patterns %}
+    _reservedPatterns.push('{{ p.pattern_name }}');
+    {% endfor %}
+    {% endif %}
+
     document.body.addEventListener('htmx:configRequest', function (evt) {
         var tag = evt.detail.parameters.tag;
-        if (tag && /^hymn_\d+$/i.test(tag) && evt.detail.path.indexOf('/update') !== -1) {
+        if (!tag || evt.detail.path.indexOf('/update') === -1) return;
+
+        if (/^hymn_\d+$/i.test(tag)) {
             evt.preventDefault();
             cmToast('Tag "' + tag + '" is reserved for hymn insertion in templates. Use a different tag name.', 'error');
+            return;
+        }
+
+        var m = tag.match(/^([a-z][a-z0-9_]*)_\d+$/);
+        if (m && _reservedPatterns.indexOf(m[1]) !== -1) {
+            evt.preventDefault();
+            cmToast('Tag "' + tag + '" conflicts with data table pattern "' + m[1] + '". Use a different tag name.', 'error');
         }
     });
 </script>

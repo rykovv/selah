@@ -37,6 +37,16 @@
             <span class="d-none d-sm-inline">Edit Columns</span>
         </button>
 
+        <!-- PPT Pattern -->
+        <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+            data-bs-toggle="modal" data-bs-target="#patternModal">
+            <i class="bi bi-braces-asterisk"></i>
+            <span class="d-none d-sm-inline">Pattern</span>
+            {% if pattern and pattern.is_enabled %}
+            <span class="badge bg-success rounded-pill" style="font-size: 0.6rem;">ON</span>
+            {% endif %}
+        </button>
+
         <!-- More options -->
         <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
@@ -167,6 +177,79 @@
     </div>
 </div>
 
+<!-- ── PPT Pattern Modal ── -->
+<div class="modal fade" id="patternModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <span class="cm-chip cm-chip-violet"><i class="bi bi-braces-asterisk"></i></span>
+                    PPT Pattern
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary" style="font-size: 0.82rem;">
+                    When enabled, this table's data is injected into service PowerPoint templates.
+                    The system scans the PPT for pattern tags and replaces them with values from the selected column.
+                </p>
+
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="patternEnabled"
+                        name="pattern_enabled" value="true"
+                        {% if pattern and pattern.is_enabled %}checked{% endif %}>
+                    <label class="form-check-label" for="patternEnabled">
+                        Enable pattern for this table
+                    </label>
+                </div>
+
+                <div class="mb-3">
+                    <label for="patternName" class="form-label fw-semibold">Pattern name</label>
+                    <div class="input-group">
+                        <span class="input-group-text" style="font-size: 0.82rem;">{{ '{{' }}</span>
+                        <input type="text" class="form-control" id="patternName"
+                            name="pattern_name" placeholder="e.g. schedule"
+                            value="{{ pattern.pattern_name if pattern else '' }}"
+                            pattern="[a-z][a-z0-9_]*">
+                        <span class="input-group-text" style="font-size: 0.82rem;">_N{{ '}}' }}</span>
+                    </div>
+                    <div class="form-text">
+                        Lowercase letters, digits, and underscores. Cannot start with "hymn".
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="patternColumn" class="form-label fw-semibold">Value column</label>
+                    <select class="form-select" id="patternColumn" name="pattern_column">
+                        <option value="">Select a column...</option>
+                        {% for col in columns %}
+                        <option value="{{ col }}"
+                            {% if pattern and pattern.column_name == col %}selected{% endif %}>
+                            {{ col }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">
+                        The column whose values will replace the pattern tags in the PPT template.
+                    </div>
+                </div>
+
+                <div class="alert alert-info py-2 mb-0" style="font-size: 0.82rem; border-radius: 8px;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <span id="patternPreviewText">Configure a pattern name to see a preview.</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary d-flex align-items-center gap-1"
+                    id="savePatternBtn" onclick="savePattern()">
+                    <i class="bi bi-check-lg"></i> Save Pattern
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     /* ── Feed URL ── */
     var _feedUrl = window.location.origin + '/api/feed/{{ table.slug }}';
@@ -240,6 +323,55 @@
             return;
         }
         btn.closest('.input-group').remove();
+    }
+
+    /* ── Pattern modal ── */
+    var patternNameInput = document.getElementById('patternName');
+
+    function updatePatternPreview() {
+        var name = (patternNameInput.value || '').trim().toLowerCase();
+        var el = document.getElementById('patternPreviewText');
+        if (name) {
+            el.innerHTML =
+                'In your PPT template, use: <code>&#123;&#123;' + name + '_1&#125;&#125;</code>, ' +
+                '<code>&#123;&#123;' + name + '_2&#125;&#125;</code>, ... (one per row)';
+        } else {
+            el.textContent = 'Configure a pattern name to see a preview.';
+        }
+    }
+
+    if (patternNameInput) {
+        patternNameInput.addEventListener('input', updatePatternPreview);
+        updatePatternPreview();
+    }
+
+    function savePattern() {
+        var enabled = document.getElementById('patternEnabled').checked;
+        var name = document.getElementById('patternName').value;
+        var column = document.getElementById('patternColumn').value;
+
+        var formData = new FormData();
+        if (enabled) formData.append('pattern_enabled', 'true');
+        formData.append('pattern_name', name);
+        formData.append('pattern_column', column);
+
+        fetch('/data-tables/{{ table.id }}/update_pattern', {
+            method: 'POST',
+            body: formData
+        }).then(function (r) {
+            if (r.ok) {
+                var modal = bootstrap.Modal.getInstance(document.getElementById('patternModal'));
+                if (modal) modal.hide();
+                flashSaved();
+                setTimeout(function () { location.reload(); }, 300);
+            } else {
+                r.text().then(function (msg) {
+                    cmToast(msg || 'Failed to save pattern.', 'error');
+                });
+            }
+        }).catch(function () {
+            cmToast('Failed to save pattern.', 'error');
+        });
     }
 </script>
 {% endblock %}
