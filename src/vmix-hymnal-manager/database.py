@@ -1,9 +1,13 @@
+import logging
 import sqlite3
+from typing import List, Tuple, Callable
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 engine = create_engine(
     settings.DATABASE_URL, connect_args={"check_same_thread": False}
@@ -99,5 +103,96 @@ def init_db_at(db_path: str):
     cursor = conn.cursor()
     for sql in _TABLE_SQL:
         cursor.execute(sql)
+    # Mark fresh databases at the current app version
+    cursor.execute(
+        "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+        ("schema_version", settings.APP_VERSION),
+    )
     conn.commit()
+    conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Versioned migrations
+# ---------------------------------------------------------------------------
+
+def _migrate_1_0_0(conn: sqlite3.Connection):
+    """Baseline — ensure all v1.0.0 tables and columns exist."""
+    cursor = conn.cursor()
+    for sql in _TABLE_SQL:
+        cursor.execute(sql)
+
+    # Columns that may be missing on pre-versioning databases
+    cursor.execute("PRAGMA table_info(data_tables)")
+    cols = [r[1] for r in cursor.fetchall()]
+    if "updated_at" not in cols:
+        cursor.execute("ALTER TABLE data_tables ADD COLUMN updated_at DATETIME")
+        cursor.execute(
+            "UPDATE data_tables SET updated_at = created_at WHERE updated_at IS NULL"
+        )
+
+
+# Ordered list of migrations: (version, description, function)
+MIGRATIONS: List[Tuple[str, str, Callable]] = [
+    ("1.0.0", "baseline schema", _migrate_1_0_0),
+]
+
+
+def _version_tuple(v: str):
+    """Convert '1.2.3' to (1, 2, 3) for comparison."""
+    return tuple(int(x) for x in v.split("."))
+
+
+def get_schema_version(db_path: str) -> str:
+    """Read the current schema version from a database."""
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT value FROM app_settings WHERE key = 'schema_version'"
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else "0.0.0"
+    except Exception:
+        return "0.0.0"
+
+
+def apply_migrations(db_path: str):
+    """Run all pending migrations on the given database."""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Ensure app_settings exists (bootstrap for pre-versioning databases)
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS app_settings "
+        "(key VARCHAR PRIMARY KEY, value VARCHAR)"
+    )
+    conn.commit()
+
+    cursor.execute(
+        "SELECT value FROM app_settings WHERE key = 'schema_version'"
+    )
+    row = cursor.fetchone()
+    current = row[0] if row else "0.0.0"
+    current_tuple = _version_tuple(current)
+
+    applied = 0
+    for version, description, migrate_fn in MIGRATIONS:
+        if _version_tuple(version) > current_tuple:
+            logger.info("Applying migration %s: %s", version, description)
+            migrate_fn(conn)
+            cursor.execute(
+                "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+                ("schema_version", version),
+            )
+            conn.commit()
+            applied += 1
+
+    if applied:
+        logger.info("Applied %d migration(s), now at schema version %s",
+                     applied, version)
+    else:
+        logger.info("Database at schema version %s — up to date", current)
+
     conn.close()
