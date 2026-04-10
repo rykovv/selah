@@ -7,3 +7,4 @@ __pycache__/
 *.spec
 *.pptx
 *.local.json
+config.json
