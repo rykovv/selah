@@ -8,7 +8,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from config import settings
-from database import init_db_at
+from database import get_schema_version, init_db_at
 
 router = APIRouter()
 
@@ -86,6 +86,10 @@ def page_settings(request: Request):
     current_db = _read_default_db("db_path") or settings.DEFAULT_DB_PATH
     current_upload = _read_default_db("upload_dir") or settings.UPLOAD_DIR
 
+    # Resolve actual DB path for schema version display
+    actual_db = current_db
+    schema_ver = get_schema_version(os.path.abspath(actual_db))
+
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "settings.html",
@@ -94,6 +98,7 @@ def page_settings(request: Request):
             "db_path": os.path.abspath(current_db),
             "upload_dir": os.path.abspath(current_upload),
             "needs_setup": settings.needs_setup,
+            "schema_version": schema_ver,
         },
     )
 
