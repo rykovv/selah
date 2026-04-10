@@ -10,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 
 from config import settings
+from config_file import get_config, set_config
 from database import Base, engine, reconnect, init_db_at, apply_migrations
 import models  # noqa: F401 — register all tables with Base.metadata
 from routes import register_routes
@@ -54,20 +55,30 @@ def _read_setting(db_path: str, key: str):
 
 
 def _apply_custom_paths() -> str:
-    """Read custom paths from default DB and apply them. Returns resolved DB path."""
+    """Read custom paths from config file (or fallback to bootstrap DB). Returns resolved DB path."""
     db_path = settings.DEFAULT_DB_PATH
 
-    if not os.path.exists(db_path):
-        # First run — create default DB with all tables
-        init_db_at(db_path)
-        settings.needs_setup = True
-        return db_path
+    # 1. Try config file first (solves chicken-and-egg problem)
+    cfg_db = get_config("db_path")
+    cfg_upload = get_config("upload_dir")
 
-    # Read custom paths from app_settings in the default DB
-    custom_db = _read_setting(db_path, "db_path")
-    custom_upload = _read_setting(db_path, "upload_dir")
+    custom_db = cfg_db
+    custom_upload = cfg_upload
 
-    if custom_db and custom_db != db_path:
+    # 2. Fallback: read from bootstrap DB if config file had nothing
+    if not custom_db and os.path.exists(db_path):
+        custom_db = _read_setting(db_path, "db_path")
+    if not custom_upload and os.path.exists(db_path):
+        custom_upload = _read_setting(db_path, "upload_dir")
+
+    # 3. Migrate legacy settings into config file for next time
+    if custom_db and not cfg_db:
+        set_config("db_path", custom_db)
+    if custom_upload and not cfg_upload:
+        set_config("upload_dir", custom_upload)
+
+    # 4. Apply custom database path
+    if custom_db and os.path.abspath(custom_db) != os.path.abspath(db_path):
         if os.path.exists(custom_db):
             reconnect(f"sqlite:///{custom_db}")
             logger.info("Connected to custom database: %s", custom_db)
@@ -75,8 +86,18 @@ def _apply_custom_paths() -> str:
         else:
             logger.warning("Custom DB path not found: %s — using default", custom_db)
 
+    # 5. Apply custom upload dir
     if custom_upload:
         settings.UPLOAD_DIR = custom_upload
+
+    # 6. Ensure default DB exists (for bootstrap settings)
+    if not os.path.exists(settings.DEFAULT_DB_PATH):
+        init_db_at(settings.DEFAULT_DB_PATH)
+
+    # 7. If no database at resolved path, create it and show setup
+    if not os.path.exists(db_path):
+        init_db_at(db_path)
+        settings.needs_setup = True
 
     return db_path
 

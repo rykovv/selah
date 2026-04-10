@@ -7,6 +7,7 @@ a = Analysis(
     binaries=[],
     datas=[('src/vmix-hymnal-manager/templates', 'templates')],
     hiddenimports=[
+        'config_file',
         'routes.dashboard',
         'routes.hymns',
         'routes.programs',

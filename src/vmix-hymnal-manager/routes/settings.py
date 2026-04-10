@@ -8,6 +8,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from config import settings
+from config_file import config_path, set_config
 from database import get_schema_version, init_db_at
 
 router = APIRouter()
@@ -99,6 +100,7 @@ def page_settings(request: Request):
             "upload_dir": os.path.abspath(current_upload),
             "needs_setup": settings.needs_setup,
             "schema_version": schema_ver,
+            "config_file": config_path(),
         },
     )
 
@@ -140,6 +142,7 @@ def save_paths(
         messages.append("Templates folder updated.")
 
     _upsert_default_db("upload_dir", upload_dir)
+    set_config("upload_dir", upload_dir)
 
     # --- Handle database path ---
     old_db = _read_default_db("db_path") or settings.DEFAULT_DB_PATH
@@ -151,6 +154,7 @@ def save_paths(
         messages.append("Restart the app to use the new database.")
 
     _upsert_default_db("db_path", db_path)
+    set_config("db_path", db_path)
 
     # Clear needs_setup flag so redirect middleware stops
     settings.needs_setup = False
