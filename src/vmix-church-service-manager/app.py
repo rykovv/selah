@@ -1,4 +1,4 @@
-"""vMix Hymnal Manager -- application entry point."""
+"""vMix Church Service Manager -- application entry point."""
 
 import uvicorn
 

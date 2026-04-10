@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['src\\vmix-hymnal-manager\\app.py'],
-    pathex=['src/vmix-hymnal-manager'],
+    ['src\\vmix-church-service-manager\\app.py'],
+    pathex=['src/vmix-church-service-manager'],
     binaries=[],
-    datas=[('src/vmix-hymnal-manager/templates', 'templates')],
+    datas=[('src/vmix-church-service-manager/templates', 'templates')],
     hiddenimports=[
         'config_file',
         'routes.dashboard',
@@ -34,7 +34,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='vmix-hymnal-manager',
+    name='vmix-church-service-manager',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -54,5 +54,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='vmix-hymnal-manager',
+    name='vmix-church-service-manager',
 )

@@ -1,4 +1,4 @@
-# vMix Hymnal Manager
+# vMix Church Service Manager
 
 A web-based church service management tool that serves hymn slides, program data, and custom data feeds to [vMix](https://www.vmix.com/) via JSON API endpoints.
 
@@ -45,7 +45,7 @@ pip install -r requirements.txt
 ### Running
 
 ```bash
-cd src/vmix-hymnal-manager
+cd src/vmix-church-service-manager
 python app.py
 ```
 
@@ -54,7 +54,7 @@ The app starts at **http://localhost:10001**. On first run, a setup wizard will 
 ## Project Structure
 
 ```
-src/vmix-hymnal-manager/
+src/vmix-church-service-manager/
     app.py                  # Entry point (uvicorn)
     factory.py              # Application factory, middleware
     config.py               # Settings (host, port, paths, version)
@@ -136,7 +136,7 @@ A PyInstaller spec file is included for building a standalone Windows executable
 pyinstaller vmix-church-service-manager.spec
 ```
 
-Output: `dist/vmix-hymnal-manager/vmix-hymnal-manager.exe`
+Output: `dist/vmix-church-service-manager/vmix-church-service-manager.exe`
 
 ## Releases
 
