@@ -29,13 +29,19 @@
             <form action="/templates/upload" method="post" enctype="multipart/form-data"
                 class="p-4 d-flex flex-column gap-3">
 
-                <!-- Clickable file-pick zone -->
-                <label for="tmpl-file-input" class="cm-upload-zone d-block" style="cursor: pointer;">
+                <!-- Drag & drop / click file-pick zone -->
+                <label for="tmpl-file-input" id="tmpl-drop-zone" class="cm-upload-zone d-block" style="cursor: pointer;">
                     <i class="bi bi-file-earmark-slides"
                         style="font-size: 2.25rem; color: var(--cm-amber); opacity: 0.85; display: block; margin-bottom: 0.5rem;"></i>
                     <p class="mb-1 fw-semibold" style="font-size: 0.875rem; color: var(--bs-body-color);">
-                        Click to choose a <code>.pptx</code> file
+                        Drag &amp; drop a <code>.pptx</code> file here
                     </p>
+                    <p class="mb-2 text-secondary" style="font-size: 0.78rem;">
+                        or
+                    </p>
+                    <span class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 mb-2">
+                        <i class="bi bi-folder2-open"></i> Browse files
+                    </span>
                     <p class="mb-0 text-secondary" id="tmpl-file-label" style="font-size: 0.78rem;">
                         No file selected
                     </p>
@@ -55,11 +61,71 @@
                 </button>
 
                 <script>
-                    document.getElementById('tmpl-file-input').addEventListener('change', function () {
+                    (function () {
+                        var zone = document.getElementById('tmpl-drop-zone');
+                        var input = document.getElementById('tmpl-file-input');
                         var lbl = document.getElementById('tmpl-file-label');
-                        lbl.textContent = this.files[0] ? this.files[0].name : 'No file selected';
-                        lbl.style.color = this.files[0] ? 'var(--cm-amber)' : '';
-                    });
+                        var nameInput = document.querySelector('input[name="name"]');
+                        var dragDepth = 0;
+
+                        function showSelection() {
+                            var file = input.files[0];
+                            lbl.textContent = file ? file.name : 'No file selected';
+                            lbl.style.color = file ? 'var(--cm-amber)' : '';
+                            // Suggest a template name from the file name
+                            if (file && nameInput && !nameInput.value.trim()) {
+                                nameInput.value = file.name.replace(/\.pptx$/i, '').replace(/[_-]+/g, ' ').trim();
+                            }
+                        }
+
+                        function showError(msg) {
+                            lbl.textContent = msg;
+                            lbl.style.color = 'var(--bs-danger)';
+                        }
+
+                        input.addEventListener('change', showSelection);
+
+                        zone.addEventListener('dragenter', function (e) {
+                            e.preventDefault();
+                            dragDepth++;
+                            zone.classList.add('cm-dragover');
+                        });
+                        zone.addEventListener('dragover', function (e) {
+                            e.preventDefault();  // required to allow dropping
+                        });
+                        zone.addEventListener('dragleave', function () {
+                            if (--dragDepth <= 0) {
+                                dragDepth = 0;
+                                zone.classList.remove('cm-dragover');
+                            }
+                        });
+                        zone.addEventListener('drop', function (e) {
+                            e.preventDefault();
+                            dragDepth = 0;
+                            zone.classList.remove('cm-dragover');
+
+                            var file = null;
+                            for (var i = 0; i < e.dataTransfer.files.length; i++) {
+                                if (/\.pptx$/i.test(e.dataTransfer.files[i].name)) {
+                                    file = e.dataTransfer.files[i];
+                                    break;
+                                }
+                            }
+                            if (!file) {
+                                showError('Only .pptx files are supported');
+                                return;
+                            }
+                            var dt = new DataTransfer();
+                            dt.items.add(file);
+                            input.files = dt.files;
+                            showSelection();
+                        });
+
+                        // Dropping outside the zone would make the browser
+                        // navigate away to open the file — neutralize that.
+                        document.addEventListener('dragover', function (e) { e.preventDefault(); });
+                        document.addEventListener('drop', function (e) { e.preventDefault(); });
+                    })();
                 </script>
 
             </form>
