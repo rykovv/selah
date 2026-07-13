@@ -23,6 +23,31 @@ from utils import sort_program_items
 
 router = APIRouter()
 
+DEFAULT_PROGRAM_NAME = "New Service Program"
+
+
+def purge_untouched_drafts(db: Session):
+    """Delete programs created via "New Program" that were never edited.
+
+    A draft counts as untouched while it still has the default name, no
+    items, no template, and is not active — the editor only saves the name
+    and template on actual change, so this state means the user backed out.
+    """
+    drafts = (
+        db.query(ServiceProgramModel)
+        .filter(
+            ServiceProgramModel.name == DEFAULT_PROGRAM_NAME,
+            ServiceProgramModel.is_active == False,
+            ServiceProgramModel.template_id.is_(None),
+            ~ServiceProgramModel.items.any(),
+        )
+        .all()
+    )
+    for draft in drafts:
+        db.delete(draft)
+    if drafts:
+        db.commit()
+
 
 # ---------------------------------------------------------------------------
 # Program CRUD
@@ -30,6 +55,7 @@ router = APIRouter()
 
 @router.get("/programs", response_class=HTMLResponse)
 def page_programs(request: Request, db: Session = Depends(get_db)):
+    purge_untouched_drafts(db)
     programs = (
         db.query(ServiceProgramModel)
         .order_by(ServiceProgramModel.last_used.desc(), ServiceProgramModel.id.desc())
@@ -46,7 +72,7 @@ def page_programs(request: Request, db: Session = Depends(get_db)):
 @router.post("/programs/new")
 def new_program(db: Session = Depends(get_db)):
     new_prog = ServiceProgramModel(
-        name="New Service Program",
+        name=DEFAULT_PROGRAM_NAME,
         is_active=False,
         last_used=datetime.now(timezone.utc),
     )
@@ -272,6 +298,7 @@ def activate_program(id: int, request: Request, db: Session = Depends(get_db)):
         prog.last_used = datetime.now(timezone.utc)
         db.commit()
 
+    purge_untouched_drafts(db)
     programs = (
         db.query(ServiceProgramModel)
         .order_by(ServiceProgramModel.id.desc())
