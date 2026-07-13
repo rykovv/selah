@@ -56,6 +56,38 @@ def new_program(db: Session = Depends(get_db)):
     return RedirectResponse(f"/programs/{new_prog.id}", status_code=303)
 
 
+@router.post("/programs/{id}/clone")
+def clone_program(id: int, db: Session = Depends(get_db)):
+    source = (
+        db.query(ServiceProgramModel)
+        .filter(ServiceProgramModel.id == id)
+        .first()
+    )
+    if not source:
+        return Response("Program not found", status_code=404)
+
+    clone = ServiceProgramModel(
+        name=f"{source.name} (Copy)",
+        is_active=False,
+        template_id=source.template_id,
+        last_used=datetime.now(timezone.utc),
+    )
+    for item in source.items:
+        clone.items.append(
+            ServiceProgramItemModel(
+                sequence=item.sequence,
+                title=item.title,
+                subtitle=item.subtitle,
+                tag=item.tag,
+                is_muted=item.is_muted,
+            )
+        )
+    db.add(clone)
+    db.commit()
+    db.refresh(clone)
+    return RedirectResponse(f"/programs/{clone.id}", status_code=303)
+
+
 @router.get("/programs/{id}", response_class=HTMLResponse)
 def program_editor_page(id: int, request: Request, db: Session = Depends(get_db)):
     prog = (

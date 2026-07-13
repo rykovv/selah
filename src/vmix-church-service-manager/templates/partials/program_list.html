@@ -47,10 +47,19 @@
                 {% endif %}
             </div>
 
-            <a href="/programs/{{ active.id }}"
-                class="btn btn-success btn-sm mt-auto d-flex align-items-center justify-content-center gap-2">
-                <i class="bi bi-pencil"></i> Edit Program
-            </a>
+            <div class="mt-auto d-flex flex-column gap-2">
+                <a href="/programs/{{ active.id }}"
+                    class="btn btn-success btn-sm d-flex align-items-center justify-content-center gap-2">
+                    <i class="bi bi-pencil"></i> Edit Program
+                </a>
+                <form action="/programs/{{ active.id }}/clone" method="post" class="d-grid">
+                    <button type="submit"
+                        class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center gap-2"
+                        title="Create a new program with the same items">
+                        <i class="bi bi-copy"></i> Duplicate
+                    </button>
+                </form>
+            </div>
         </div>
 
         <!-- Right: full order-of-service preview -->
@@ -147,9 +156,17 @@
                 <i class="bi bi-broadcast"></i> Set Active
             </button>
             <a href="/programs/{{ prog.id }}"
-                class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+                class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                title="Edit">
                 <i class="bi bi-pencil"></i>
             </a>
+            <form action="/programs/{{ prog.id }}/clone" method="post" class="d-flex">
+                <button type="submit"
+                    class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                    title="Duplicate — create a new program with the same items">
+                    <i class="bi bi-copy"></i>
+                </button>
+            </form>
         </div>
     </div>
     {% endfor %}
