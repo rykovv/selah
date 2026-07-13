@@ -88,8 +88,9 @@
                         </span>
                         <span class="fw-semibold flex-grow-1">{{ item.title }}</span>
                         {% if item.subtitle %}
-                        <span class="text-secondary flex-shrink-0 text-truncate"
-                            style="max-width: 160px; font-size: 0.78rem;">
+                        <span class="text-secondary text-truncate"
+                            style="min-width: 0; max-width: 55%; font-size: 0.78rem;"
+                            title="{{ item.subtitle }}">
                             {{ item.subtitle }}
                         </span>
                         {% endif %}
