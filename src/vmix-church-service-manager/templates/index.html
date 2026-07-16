@@ -206,30 +206,43 @@
                         <span>These settings apply to <strong>hymn slides only</strong>. All other slides follow the assigned template.</span>
                     </div>
 
-                    <div>
-                        <label class="form-label fw-semibold small">Font Family</label>
-                        <select class="form-select" name="font_select"
-                            onchange="toggleManualFont(this, 'progManual')">
-                            <option value="Arial" selected>Arial (Universal)</option>
-                            <option value="Calibri">Calibri (Modern)</option>
-                            <option value="Times New Roman">Times New Roman (Classic)</option>
-                            <option value="Verdana">Verdana (Wide)</option>
-                            <option value="Tahoma">Tahoma</option>
-                            <option value="Century Gothic">Century Gothic</option>
-                            <option value="Manual">Manual input…</option>
-                        </select>
-                        <input type="text" class="form-control mt-2 d-none" name="font_manual" id="progManual"
-                            placeholder="Font name…">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" name="inherit_font"
+                            value="true" id="progInheritFont" onchange="toggleInheritFont(this)">
+                        <label class="form-check-label fw-semibold small" for="progInheritFont">
+                            Inherit fonts from template
+                        </label>
+                        <div class="form-text small mb-0">
+                            Lyrics use the font of the {{ '{{hymn_N}}' }} placeholder itself; titles are 20% larger.
+                        </div>
                     </div>
 
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Title Size (pt)</label>
-                            <input type="number" class="form-control" name="title_size" value="80" min="20" max="200">
+                    <div id="progFontControls" class="d-flex flex-column gap-3">
+                        <div>
+                            <label class="form-label fw-semibold small">Font Family</label>
+                            <select class="form-select" name="font_select"
+                                onchange="toggleManualFont(this, 'progManual')">
+                                <option value="Arial" selected>Arial (Universal)</option>
+                                <option value="Calibri">Calibri (Modern)</option>
+                                <option value="Times New Roman">Times New Roman (Classic)</option>
+                                <option value="Verdana">Verdana (Wide)</option>
+                                <option value="Tahoma">Tahoma</option>
+                                <option value="Century Gothic">Century Gothic</option>
+                                <option value="Manual">Manual input…</option>
+                            </select>
+                            <input type="text" class="form-control mt-2 d-none" name="font_manual" id="progManual"
+                                placeholder="Font name…">
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Lyrics Size (pt)</label>
-                            <input type="number" class="form-control" name="lyrics_size" value="60" min="20" max="200">
+
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Title Size (pt)</label>
+                                <input type="number" class="form-control" name="title_size" value="80" min="20" max="200">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Lyrics Size (pt)</label>
+                                <input type="number" class="form-control" name="lyrics_size" value="60" min="20" max="200">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -352,6 +365,14 @@
             el.classList.add('d-none');
             el.required = false;
         }
+    }
+
+    function toggleInheritFont(checkbox) {
+        var wrap = document.getElementById('progFontControls');
+        wrap.querySelectorAll('input, select').forEach(function (el) {
+            el.disabled = checkbox.checked;
+        });
+        wrap.style.opacity = checkbox.checked ? '0.5' : '';
     }
 </script>
 {% endblock %}

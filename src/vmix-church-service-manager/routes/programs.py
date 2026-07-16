@@ -339,6 +339,7 @@ def download_program_ppt(
     font_manual: str = None,
     title_size: int = 80,
     lyrics_size: int = 60,
+    inherit_font: bool = False,
     db: Session = Depends(get_db),
 ):
     prog = (
@@ -369,6 +370,7 @@ def download_program_ppt(
         font_manual=font_manual or "",
         title_size=title_size,
         lyrics_size=lyrics_size,
+        inherit_font=inherit_font,
     )
     try:
         output = generate_program_pptx(prog, db, input_path, config=cfg)

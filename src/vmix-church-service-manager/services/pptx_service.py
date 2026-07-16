@@ -8,6 +8,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from pptx import Presentation
+from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 from pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
@@ -33,6 +34,7 @@ class PptxConfig:
         font_manual: str = "",
         title_size: int = 80,
         lyrics_size: int = 60,
+        inherit_font: bool = False,
     ):
         if font_select == "Manual" and font_manual.strip():
             self.font_name = font_manual.strip()
@@ -43,6 +45,7 @@ class PptxConfig:
         self.lyrics_size = Pt(lyrics_size)
         self._title_size_raw = title_size
         self._lyrics_size_raw = lyrics_size
+        self.inherit_font = inherit_font
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +148,83 @@ def _duplicate_slide(pres, index):
                 pass
 
     return dest
+
+
+def _props_from_rpr(rPr):
+    """Return (font_name, size_pt) explicitly set on an <a:rPr>/<a:defRPr> element."""
+    if rPr is None:
+        return None, None
+    name = None
+    latin = rPr.find(qn("a:latin"))
+    if latin is not None:
+        typeface = latin.get("typeface")
+        # "+mj-lt"/"+mn-lt" are theme references, not real font names
+        if typeface and not typeface.startswith("+"):
+            name = typeface
+    size = None
+    sz = rPr.get("sz")  # hundredths of a point
+    if sz:
+        size = int(round(int(sz) / 100.0))
+    return name, size
+
+
+def _props_from_lststyle(txBody, level):
+    """Return (font_name, size_pt) from a txBody's <a:lstStyle> for the given level."""
+    lstStyle = txBody.find(qn("a:lstStyle"))
+    if lstStyle is None:
+        return None, None
+    lvlpPr = lstStyle.find(qn("a:lvl%dpPr" % (level + 1)))
+    if lvlpPr is None:
+        return None, None
+    return _props_from_rpr(lvlpPr.find(qn("a:defRPr")))
+
+
+def _resolve_pattern_font(slide, shape, paragraph):
+    """Resolve the effective (font_name, size_pt) of a template paragraph.
+
+    Placeholder shapes usually carry no run-level formatting; the font lives
+    up the DrawingML inheritance chain instead. Walk it the way PowerPoint
+    does: run -> paragraph -> shape list style -> slide layout placeholder ->
+    slide master placeholder -> master body style. Either component may come
+    back None when nothing explicit exists anywhere.
+    """
+    level = paragraph.level
+    candidates = []
+
+    for run in paragraph.runs:
+        candidates.append(_props_from_rpr(run._r.find(qn("a:rPr"))))
+
+    pPr = paragraph._p.find(qn("a:pPr"))
+    if pPr is not None:
+        candidates.append(_props_from_rpr(pPr.find(qn("a:defRPr"))))
+
+    candidates.append(_props_from_lststyle(shape.text_frame._txBody, level))
+
+    if shape.is_placeholder:
+        ph_idx = shape.placeholder_format.idx
+        layout = slide.slide_layout
+        master = layout.slide_master
+        for host in (layout, master):
+            for ph in host.placeholders:
+                if ph.placeholder_format.idx == ph_idx and ph.has_text_frame:
+                    candidates.append(
+                        _props_from_lststyle(ph.text_frame._txBody, level)
+                    )
+                    break
+        txStyles = master.element.find(qn("p:txStyles"))
+        if txStyles is not None:
+            for style_tag in ("p:bodyStyle", "p:otherStyle"):
+                style = txStyles.find(qn(style_tag))
+                if style is not None:
+                    lvlpPr = style.find(qn("a:lvl%dpPr" % (level + 1)))
+                    if lvlpPr is not None:
+                        candidates.append(
+                            _props_from_rpr(lvlpPr.find(qn("a:defRPr")))
+                        )
+
+    name = next((n for n, _ in candidates if n), None)
+    size = next((s for _, s in candidates if s), None)
+    return name, size
 
 
 def _move_slide(pres, old_index, new_index):
@@ -323,6 +403,8 @@ def generate_program_pptx(
 
         # 1. Check for Hymn Tag
         hymn_seq = None
+        pattern_shape = None
+        pattern_paragraph = None
         for shape in slide.shapes:
             if not shape.has_text_frame:
                 continue
@@ -330,12 +412,29 @@ def generate_program_pptx(
                 match = re.search(r"\{\{hymn_(\d+)\}\}", paragraph.text)
                 if match:
                     hymn_seq = int(match.group(1))
+                    pattern_shape = shape
+                    pattern_paragraph = paragraph
                     break
             if hymn_seq:
                 break
 
         if not hymn_seq:
             continue
+
+        # Effective fonts for this hymn block: either the manual config or,
+        # when inheriting, whatever the {{hymn_N}} placeholder itself uses.
+        font_name = cfg.font_name
+        lyrics_pt = cfg._lyrics_size_raw
+        title_pt = cfg._title_size_raw
+        if cfg.inherit_font:
+            inh_name, inh_size = _resolve_pattern_font(
+                slide, pattern_shape, pattern_paragraph
+            )
+            if inh_name:
+                font_name = inh_name
+            if inh_size:
+                lyrics_pt = inh_size
+                title_pt = int(round(inh_size * 1.2))
 
         # 2. Fetch Content
         plan_item = db.query(ServicePlanHymnModel).filter(
@@ -374,23 +473,23 @@ def generate_program_pptx(
                             # Hymn: first line is "Hymn #N", rest is title
                             p1 = s.text_frame.add_paragraph()
                             p1.text = lines[0].strip()
-                            p1.font.name = cfg.font_name
-                            p1.font.size = Pt(int(cfg._title_size_raw * 0.5))
+                            p1.font.name = font_name
+                            p1.font.size = Pt(int(title_pt * 0.5))
                             p1.font.bold = False
                             p1.alignment = PP_ALIGN.CENTER
 
                             p2 = s.text_frame.add_paragraph()
                             p2.text = "\n".join(lines[1:]).strip()
-                            p2.font.name = cfg.font_name
-                            p2.font.size = Pt(cfg._title_size_raw)
+                            p2.font.name = font_name
+                            p2.font.size = Pt(title_pt)
                             p2.font.bold = True
                             p2.alignment = PP_ALIGN.CENTER
                         else:
                             # Worship song: title only
                             p1 = s.text_frame.add_paragraph()
                             p1.text = extra_chunk.strip()
-                            p1.font.name = cfg.font_name
-                            p1.font.size = Pt(cfg._title_size_raw)
+                            p1.font.name = font_name
+                            p1.font.size = Pt(title_pt)
                             p1.font.bold = True
                             p1.alignment = PP_ALIGN.CENTER
             else:
@@ -398,8 +497,8 @@ def generate_program_pptx(
                     if s.has_text_frame:
                         for p in s.text_frame.paragraphs:
                             p.text = p.text.replace(p.text, clean_text(extra_chunk))
-                            p.font.name = cfg.font_name
-                            p.font.size = Pt(cfg._lyrics_size_raw)
+                            p.font.name = font_name
+                            p.font.size = Pt(lyrics_pt)
 
             insertion_index += 1
 
