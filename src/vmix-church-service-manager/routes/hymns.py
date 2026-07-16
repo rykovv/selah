@@ -113,6 +113,13 @@ def _renumber_plan(db: Session):
         .order_by(ServicePlanHymnModel.sequence)
         .all()
     )
+    # Clear to negative temporaries first: updates are emitted in primary-key
+    # order, so direct reassignment can collide with the UNIQUE(sequence)
+    # constraint when row ids are not aligned with sequence order.
+    for i, item in enumerate(items, start=1):
+        item.sequence = -i
+    db.flush()
+
     for i, item in enumerate(items, start=1):
         item.sequence = i
     db.commit()
