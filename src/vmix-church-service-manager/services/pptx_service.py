@@ -20,6 +20,14 @@ BG_COLOR = RGBColor(0, 0, 0)
 TEXT_COLOR = RGBColor(255, 255, 255)
 
 
+def _parse_color(value: Optional[str], default: RGBColor) -> RGBColor:
+    """Parse a '#RRGGBB' hex string, falling back to *default* on bad input."""
+    try:
+        return RGBColor.from_string(value.strip().lstrip("#"))
+    except (AttributeError, ValueError):
+        return default
+
+
 def _is_hymn_number(value: Optional[str]) -> bool:
     """Return True if the value looks like a real hymn number (digits only)."""
     return bool(value and value.strip().isdigit())
@@ -35,6 +43,8 @@ class PptxConfig:
         title_size: int = 80,
         lyrics_size: int = 60,
         inherit_font: bool = False,
+        bg_color: str = "#000000",
+        text_color: str = "#FFFFFF",
     ):
         if font_select == "Manual" and font_manual.strip():
             self.font_name = font_manual.strip()
@@ -46,6 +56,8 @@ class PptxConfig:
         self._title_size_raw = title_size
         self._lyrics_size_raw = lyrics_size
         self.inherit_font = inherit_font
+        self.bg_color = _parse_color(bg_color, BG_COLOR)
+        self.text_color = _parse_color(text_color, TEXT_COLOR)
 
 
 # ---------------------------------------------------------------------------
@@ -62,11 +74,11 @@ def _geometry(aspect: str):
     return w, h, margin
 
 
-def _create_black_slide(prs):
+def _create_bg_slide(prs, color: RGBColor = BG_COLOR):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     fill = slide.background.fill
     fill.solid()
-    fill.fore_color.rgb = BG_COLOR
+    fill.fore_color.rgb = color
     return slide
 
 
@@ -278,7 +290,7 @@ def generate_hymn_plan_pptx(plan_items, aspect: str = "4:3", config: Optional[Pp
             continue
 
         # Title slide
-        slide = _create_black_slide(prs)
+        slide = _create_bg_slide(prs, cfg.bg_color)
         tf = _add_text_frame(slide, margin, safe_w, safe_h)
 
         if _is_hymn_number(hymn.number):
@@ -287,7 +299,7 @@ def generate_hymn_plan_pptx(plan_items, aspect: str = "4:3", config: Optional[Pp
             p1.font.name = cfg.font_name
             p1.font.size = cfg.number_size
             p1.font.bold = False
-            p1.font.color.rgb = TEXT_COLOR
+            p1.font.color.rgb = cfg.text_color
             p1.alignment = PP_ALIGN.CENTER
 
             p2 = tf.add_paragraph()
@@ -295,7 +307,7 @@ def generate_hymn_plan_pptx(plan_items, aspect: str = "4:3", config: Optional[Pp
             p2.font.name = cfg.font_name
             p2.font.size = cfg.title_size
             p2.font.bold = True
-            p2.font.color.rgb = TEXT_COLOR
+            p2.font.color.rgb = cfg.text_color
             p2.alignment = PP_ALIGN.CENTER
         else:
             p1 = tf.paragraphs[0]
@@ -303,26 +315,26 @@ def generate_hymn_plan_pptx(plan_items, aspect: str = "4:3", config: Optional[Pp
             p1.font.name = cfg.font_name
             p1.font.size = cfg.title_size
             p1.font.bold = True
-            p1.font.color.rgb = TEXT_COLOR
+            p1.font.color.rgb = cfg.text_color
             p1.alignment = PP_ALIGN.CENTER
 
         # Lyrics slides
         slides_source = get_slides_by_type(hymn, preferred_type="PPT")
 
         for s in slides_source:
-            slide = _create_black_slide(prs)
+            slide = _create_bg_slide(prs, cfg.bg_color)
             tf = _add_text_frame(slide, margin, safe_w, safe_h)
             p = tf.paragraphs[0]
             p.text = clean_text(s.content)
             p.font.name = cfg.font_name
             p.font.size = cfg.lyrics_size
             p.font.bold = False
-            p.font.color.rgb = TEXT_COLOR
+            p.font.color.rgb = cfg.text_color
             p.alignment = PP_ALIGN.CENTER
 
         # Spacer between hymns
         if index < len(plan_items) - 1:
-            _create_black_slide(prs)
+            _create_bg_slide(prs, cfg.bg_color)
 
     output = BytesIO()
     prs.save(output)

@@ -25,7 +25,7 @@
                         data-bs-toggle="modal" data-bs-target="#pptSettingsModal"
                         title="Download Hymns PPT">
                         <i class="bi bi-download"></i>
-                        <span class="d-none d-sm-inline">PPT</span>
+                        <span class="d-none d-sm-inline">Download PPT</span>
                     </button>
                 </div>
             </div>
@@ -154,7 +154,7 @@
 
 
 <!-- ── PPT Settings Modal ── -->
-<div class="modal fade" id="pptSettingsModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="pptSettingsModal" tabindex="-1" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -209,6 +209,25 @@
                         </div>
                     </div>
 
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Background Color</label>
+                            <div class="clr-field" style="color: #000000;">
+                                <button type="button" aria-label="Pick background color"></button>
+                                <input type="text" class="form-control" name="bg_color" value="#000000"
+                                    data-coloris autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Text Color</label>
+                            <div class="clr-field" style="color: #FFFFFF;">
+                                <button type="button" aria-label="Pick text color"></button>
+                                <input type="text" class="form-control" name="text_color" value="#FFFFFF"
+                                    data-coloris autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="modal-footer">
@@ -223,7 +242,26 @@
     </div>
 </div>
 
+<!-- Coloris: in-page color picker (native <input type="color"> dialogs are
+     unreliable on Windows: the gradient area ignores clicks until a basic
+     color has been picked) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@melloware/coloris@0.24.0/dist/coloris.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@melloware/coloris@0.24.0/dist/umd/coloris.min.js"></script>
+<style>
+    /* keep the picker above the Bootstrap modal (z-index 1055) */
+    .clr-picker { z-index: 2000; }
+</style>
 <script>
+    Coloris({
+        alpha: false,
+        format: 'hex',
+        themeMode: 'auto',
+        swatches: [
+            '#000000', '#ffffff', '#1a237e', '#004d40',
+            '#b71c1c', '#4a148c', '#f5f5dc', '#fff9c4'
+        ]
+    });
+
     function toggleManualFont(select) {
         var el = document.getElementById('pptFontManual');
         if (select.value === 'Manual') {

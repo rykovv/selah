@@ -295,6 +295,8 @@ def download_ppt(
     font_manual: str = "",
     title_size: int = 80,
     lyrics_size: int = 60,
+    bg_color: str = "#000000",
+    text_color: str = "#FFFFFF",
     db: Session = Depends(get_db),
 ):
     plan = (
@@ -310,6 +312,8 @@ def download_ppt(
         font_manual=font_manual,
         title_size=title_size,
         lyrics_size=lyrics_size,
+        bg_color=bg_color,
+        text_color=text_color,
     )
     try:
         output = generate_hymn_plan_pptx(plan, aspect=aspect, config=cfg)
