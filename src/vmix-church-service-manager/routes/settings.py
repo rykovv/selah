@@ -82,6 +82,13 @@ def pick_upload_dir():
     return JSONResponse({"path": path})
 
 
+# /docs is taken by FastAPI's built-in Swagger UI
+@router.get("/documentation", response_class=HTMLResponse)
+def page_documentation(request: Request):
+    templates = request.app.state.templates
+    return templates.TemplateResponse("documentation.html", {"request": request})
+
+
 @router.get("/settings", response_class=HTMLResponse)
 def page_settings(request: Request):
     current_db = _read_default_db("db_path") or settings.DEFAULT_DB_PATH

@@ -1,0 +1,918 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% raw %}
+<style>
+    /* ── Documentation page styles ── */
+    .doc-toc {
+        position: sticky;
+        top: 84px;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        font-size: 0.83rem;
+    }
+    .doc-toc a {
+        display: block;
+        padding: 0.3rem 0.75rem;
+        color: var(--bs-secondary-color);
+        text-decoration: none;
+        border-left: 2px solid var(--bs-border-color);
+        line-height: 1.35;
+    }
+    .doc-toc a:hover {
+        color: var(--bs-primary);
+        border-left-color: var(--bs-primary);
+    }
+    .doc-toc a.doc-toc-sub { padding-left: 1.5rem; font-size: 0.78rem; }
+    .doc-section { scroll-margin-top: 84px; }
+    .doc-body { font-size: 0.9rem; line-height: 1.7; }
+    .doc-body h4 { margin-top: 2rem; font-weight: 600; }
+    .doc-body h5 { margin-top: 1.5rem; font-weight: 600; font-size: 1rem; }
+    .doc-body code {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 4px;
+        padding: 0.1rem 0.35rem;
+        font-size: 0.8em;
+    }
+    .doc-body pre {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 0.78rem;
+        line-height: 1.5;
+    }
+    .doc-body pre code { background: none; border: none; padding: 0; }
+    .doc-body table { font-size: 0.83rem; }
+
+    /* Figures / illustrations */
+    .doc-fig {
+        border: 1px dashed var(--bs-border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin: 1.25rem 0;
+        background: var(--bs-body-bg);
+    }
+    .doc-fig-caption {
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color);
+        text-align: center;
+        margin-top: 0.75rem;
+        margin-bottom: 0;
+    }
+
+    /* Mock slide thumbnails */
+    .doc-slide {
+        background: #000;
+        color: #fff;
+        border-radius: 6px;
+        aspect-ratio: 16 / 9;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0.5rem;
+        font-size: 0.62rem;
+        line-height: 1.35;
+        min-width: 0;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    }
+    .doc-slide-template {
+        background: linear-gradient(135deg, #14532d, #166534);
+        font-family: var(--bs-font-monospace);
+    }
+    .doc-slide .doc-slide-title { font-weight: 700; font-size: 0.78rem; }
+    .doc-slide .doc-slide-small { opacity: 0.8; font-size: 0.55rem; }
+    .doc-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--bs-secondary-color);
+        font-size: 1.1rem;
+        padding: 0 0.25rem;
+    }
+    .doc-flow-label {
+        font-size: 0.68rem;
+        color: var(--bs-secondary-color);
+        text-align: center;
+        margin-top: 0.35rem;
+    }
+
+    /* Concept diagram boxes */
+    .doc-box {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 10px;
+        background: var(--bs-tertiary-bg);
+        padding: 0.6rem 0.9rem;
+        text-align: center;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+    .doc-box small {
+        display: block;
+        font-weight: 400;
+        color: var(--bs-secondary-color);
+        font-size: 0.68rem;
+        margin-top: 0.15rem;
+    }
+
+    /* Mock UI rows */
+    .doc-mock {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--bs-body-bg);
+        font-size: 0.8rem;
+    }
+    .doc-mock-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .doc-mock-row:last-child { border-bottom: none; }
+    .doc-mock-muted { opacity: 0.45; text-decoration: line-through; }
+    .doc-mock-seq {
+        color: var(--bs-success);
+        font-size: 0.72rem;
+        font-weight: 600;
+        min-width: 1.1rem;
+        text-align: right;
+    }
+    .doc-mock-num {
+        font-family: var(--bs-font-monospace);
+        font-size: 0.75rem;
+        font-weight: 600;
+        min-width: 2.2rem;
+    }
+    .doc-mock-grip { color: var(--bs-secondary-color); opacity: 0.5; cursor: grab; }
+    .doc-mock-tag {
+        font-family: var(--bs-font-monospace);
+        font-size: 0.72rem;
+        color: var(--bs-primary);
+    }
+    .doc-badge-live {
+        background: rgba(16,185,129,0.15);
+        color: #10b981;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        padding: 0.2rem 0.5rem;
+        border-radius: 20px;
+    }
+
+    /* Editor source/preview illustration */
+    .doc-src {
+        font-family: var(--bs-font-monospace);
+        font-size: 0.72rem;
+        line-height: 1.5;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 8px;
+        padding: 0.75rem;
+        white-space: pre;
+        overflow-x: auto;
+    }
+    .doc-src .doc-label { color: var(--bs-primary); font-weight: 700; }
+
+    kbd.doc-kbd {
+        background: var(--bs-tertiary-bg);
+        color: var(--bs-body-color);
+        border: 1px solid var(--bs-border-color);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        padding: 0.05rem 0.4rem;
+        font-size: 0.75em;
+    }
+</style>
+
+<div class="cm-page-header">
+    <div>
+        <h2>Documentation</h2>
+        <p class="cm-page-desc">Complete user guide — every view, button, and behavior explained.</p>
+    </div>
+    <a href="/settings" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+        <i class="bi bi-arrow-left"></i> Back to Settings
+    </a>
+</div>
+
+<div class="row g-4">
+
+    <!-- ══════════ Table of contents ══════════ -->
+    <div class="col-lg-3 d-none d-lg-block">
+        <nav class="doc-toc">
+            <a href="#overview">1. What is this app?</a>
+            <a href="#getting-started">2. Getting started</a>
+            <a href="#dashboard">3. Dashboard</a>
+            <a href="#programs">4. Service Programs</a>
+            <a href="#programs-list" class="doc-toc-sub">Programs list</a>
+            <a href="#programs-editor" class="doc-toc-sub">Program editor</a>
+            <a href="#programs-tags" class="doc-toc-sub">PPT tags &amp; muting</a>
+            <a href="#templates">5. PowerPoint templates</a>
+            <a href="#hymns">6. Hymns view</a>
+            <a href="#hymns-plan" class="doc-toc-sub">Service hymns plan</a>
+            <a href="#hymns-library" class="doc-toc-sub">Hymn library &amp; search</a>
+            <a href="#hymns-ppt" class="doc-toc-sub">Hymns PPT download</a>
+            <a href="#editor">7. Hymn Editor</a>
+            <a href="#editor-format" class="doc-toc-sub">Slide source format</a>
+            <a href="#editor-wrap" class="doc-toc-sub">Line-length warnings</a>
+            <a href="#ppt-generation">8. How PPTs are generated</a>
+            <a href="#ppt-program" class="doc-toc-sub">Service Program PPT</a>
+            <a href="#ppt-inherit" class="doc-toc-sub">Font inheritance</a>
+            <a href="#ppt-hymns" class="doc-toc-sub">Standalone Hymns PPT</a>
+            <a href="#data-tables">9. Data Tables</a>
+            <a href="#vmix">10. vMix integration (API)</a>
+            <a href="#monitoring">11. Monitoring</a>
+            <a href="#settings">12. Settings</a>
+            <a href="#troubleshooting">13. Tips &amp; troubleshooting</a>
+        </nav>
+    </div>
+
+    <!-- ══════════ Content ══════════ -->
+    <div class="col-lg-9 doc-body">
+
+        <!-- ── 1. Overview ── -->
+        <div class="cm-card p-4 doc-section" id="overview">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-indigo me-2"><i class="bi bi-info-circle"></i></span>1. What is this app?</h4>
+            <p>
+                <strong>vMix Church Service Manager</strong> is a companion tool for church media teams.
+                It runs as a small local web server on the media computer and does three jobs:
+            </p>
+            <ol>
+                <li><strong>Store hymns and songs</strong> — a searchable library where each hymn keeps two
+                    parallel sets of slides: one formatted for <em>vMix live titles</em> and one for
+                    <em>PowerPoint</em>.</li>
+                <li><strong>Plan the service</strong> — build an <em>Order of Service</em> (a program of
+                    events with people and descriptions) and a <em>hymn plan</em> (which hymns will be sung,
+                    in what order).</li>
+                <li><strong>Feed the outputs</strong> — generate ready-to-present PowerPoint files and serve
+                    live JSON feeds that vMix reads as Data Sources.</li>
+            </ol>
+
+            <div class="doc-fig">
+                <div class="row g-2 align-items-center text-center">
+                    <div class="col"><div class="doc-box">Hymn Library<small>numbers, titles, lyrics</small></div></div>
+                    <div class="col-auto doc-arrow"><i class="bi bi-arrow-right"></i></div>
+                    <div class="col"><div class="doc-box">Service Plan<small>today's hymns, ordered</small></div></div>
+                    <div class="col-auto doc-arrow"><i class="bi bi-arrow-right"></i></div>
+                    <div class="col"><div class="doc-box">Outputs<small>PPTX files + vMix JSON feeds</small></div></div>
+                </div>
+                <div class="row g-2 align-items-center text-center mt-1">
+                    <div class="col"><div class="doc-box">Service Program<small>order of service + tags</small></div></div>
+                    <div class="col-auto doc-arrow"><i class="bi bi-arrow-up-right"></i></div>
+                    <div class="col"><div class="doc-box">PPT Template<small>your .pptx design</small></div></div>
+                    <div class="col-auto doc-arrow"><i class="bi bi-arrow-up-right"></i></div>
+                    <div class="col"><div class="doc-box">Data Tables<small>custom feeds &amp; patterns</small></div></div>
+                </div>
+                <p class="doc-fig-caption">How the pieces fit together: everything flows toward PowerPoint files and live vMix feeds.</p>
+            </div>
+
+            <p class="mb-0">
+                The interface is a regular web page — no installation is needed on other devices. Any browser
+                on the same network can open it, and vMix (even on another machine) reads the JSON feeds
+                over HTTP.
+            </p>
+        </div>
+
+        <!-- ── 2. Getting started ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="getting-started">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-rocket-takeoff"></i></span>2. Getting started</h4>
+            <ul>
+                <li><strong>Launch:</strong> run the application executable (or <code>python app.py</code> in
+                    development). It starts a web server on port <code>10001</code> listening on all network
+                    interfaces.</li>
+                <li><strong>Open the UI:</strong> browse to <code>http://localhost:10001</code> on the same
+                    machine, or <code>http://&lt;machine-ip&gt;:10001</code> from another device on the
+                    network.</li>
+                <li><strong>First run:</strong> if the configured database file cannot be found, every page
+                    redirects to <strong>Settings</strong> so you can point the app at (or create) a database
+                    and templates folder before doing anything else.</li>
+                <li><strong>Theme:</strong> the sun/moon button at the right of the navigation bar toggles
+                    light and dark mode. The choice is remembered per browser.</li>
+                <li><strong>Notifications:</strong> success, warning, and error messages appear as small
+                    toast panels in the bottom-right corner. They dismiss themselves after a while, or click
+                    the × to close them.</li>
+            </ul>
+            <h5>Navigation bar</h5>
+            <p class="mb-1">The dark bar at the top is visible on every page:</p>
+            <table class="table table-sm">
+                <thead><tr><th>Item</th><th>Purpose</th></tr></thead>
+                <tbody>
+                    <tr><td><i class="bi bi-house"></i> Dashboard</td><td>Live overview of the active program and today's hymns</td></tr>
+                    <tr><td><i class="bi bi-calendar3"></i> Programs</td><td>Create and edit orders of service</td></tr>
+                    <tr><td><i class="bi bi-music-note-list"></i> Hymns</td><td>Pick today's hymns from the library</td></tr>
+                    <tr><td><i class="bi bi-pencil-square"></i> Hymn Editor</td><td>Create and edit hymn lyrics slides</td></tr>
+                    <tr><td><i class="bi bi-table"></i> Data Tables</td><td>Custom data feeds (announcements, verses, schedules…)</td></tr>
+                    <tr><td><i class="bi bi-graph-up"></i> Monitoring</td><td>Live request-rate charts for the vMix feeds</td></tr>
+                    <tr><td><i class="bi bi-gear"></i> Settings</td><td>Storage paths, version info, and this documentation</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ── 3. Dashboard ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="dashboard">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-indigo me-2"><i class="bi bi-house"></i></span>3. Dashboard</h4>
+            <p>The Dashboard is the "day of service" screen — a read-mostly overview of what is live right now.</p>
+
+            <h5>Status strip</h5>
+            <ul>
+                <li>When a program is active: a green <strong>LIVE</strong> badge, the program's name, and a
+                    <strong>vMix Feed</strong> button that opens <code>/api/program/current</code> in a new tab
+                    (handy for copying the URL into vMix).</li>
+                <li>When nothing is active: a red <strong>OFFLINE</strong> badge with a
+                    <em>Go to Programs</em> shortcut.</li>
+            </ul>
+
+            <h5>Order of Service panel (left)</h5>
+            <ul>
+                <li>Shows the active program's items in order: sequence number, event title, and the
+                    person/description subtitle. <strong>Muted items are hidden here</strong> (see
+                    <a href="#programs-tags">muting</a>).</li>
+                <li>If the program has a PowerPoint template assigned, a green
+                    <strong>Download</strong> button opens the <em>Service Program PPT</em> settings dialog
+                    (identical to the one in the program editor — see
+                    <a href="#ppt-program">Service Program PPT</a>).</li>
+                <li>If no template is assigned, a dimmed "No template" link takes you to the Templates
+                    manager instead.</li>
+            </ul>
+
+            <h5>Hymns panel (right)</h5>
+            <ul>
+                <li>Lists today's planned hymns with their numbers. The eye icon on each row opens the
+                    <strong>Hymn Preview</strong> dialog showing both the vMix and PowerPoint slides.</li>
+                <li>When hymns are planned, a <strong>Download</strong> button opens the
+                    <em>Hymns PPT</em> settings dialog (see <a href="#hymns-ppt">Hymns PPT download</a>).</li>
+                <li>When empty, a shortcut leads to the Hymns view to add some.</li>
+            </ul>
+        </div>
+
+        <!-- ── 4. Programs ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="programs">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-calendar3"></i></span>4. Service Programs</h4>
+            <p>
+                A <strong>Service Program</strong> is an order of service: a sequence of events (Welcome,
+                Opening Prayer, Sermon…), each with an optional person/description and an optional
+                <em>PPT tag</em>. One program at a time can be <strong>active</strong> — that is the one the
+                Dashboard and the vMix feed serve.
+            </p>
+
+            <h5 class="doc-section" id="programs-list">Programs list (<code>/programs</code>)</h5>
+            <ul>
+                <li><strong>New Program</strong> creates a program named "New Service Program" and opens it
+                    in the editor. <em>Housekeeping:</em> empty drafts you never touched (default name, no
+                    items, no template, not active) are deleted automatically next time the list is loaded —
+                    so backing out of an accidental click leaves no clutter.</li>
+                <li>The <strong>active program</strong> is presented as a large card with a
+                    <span class="doc-badge-live">● LIVE NOW</span> badge, its item count and template status,
+                    an <strong>Edit Program</strong> button, a <strong>Duplicate</strong> button, and a
+                    scrollable preview of the full order of service.</li>
+                <li>Other programs appear in a grid below with <strong>Set Active</strong>,
+                    <strong>Edit</strong>, and <strong>Duplicate</strong> actions.</li>
+                <li><strong>Duplicate</strong> clones everything — items, tags, muted flags, and the template
+                    assignment — into a new program named "<em>Original name</em> (Copy)".</li>
+            </ul>
+
+            <h5 class="doc-section" id="programs-editor">Program editor (<code>/programs/{id}</code>)</h5>
+            <div class="doc-fig">
+                <div class="doc-mock">
+                    <div class="doc-mock-row" style="background: var(--bs-tertiary-bg); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--bs-secondary-color);">
+                        <span style="width: 16px;"></span>
+                        <span style="flex: 2;">Event Title</span>
+                        <span style="flex: 2;">Person / Description</span>
+                        <span style="flex: 1.5;">PPT Tag</span>
+                        <span style="width: 46px;"></span>
+                    </div>
+                    <div class="doc-mock-row">
+                        <i class="bi bi-grip-vertical doc-mock-grip"></i>
+                        <span style="flex: 2; font-weight: 600;">Welcome</span>
+                        <span style="flex: 2; color: var(--bs-secondary-color);">Pastor John</span>
+                        <span style="flex: 1.5;" class="doc-mock-tag">{{welcome}}</span>
+                        <span style="width: 46px;"><i class="bi bi-eye"></i> <i class="bi bi-x-lg text-danger" style="opacity:.5"></i></span>
+                    </div>
+                    <div class="doc-mock-row doc-mock-muted">
+                        <i class="bi bi-grip-vertical doc-mock-grip"></i>
+                        <span style="flex: 2; font-weight: 600;">Sound Check</span>
+                        <span style="flex: 2; color: var(--bs-secondary-color);">Internal note</span>
+                        <span style="flex: 1.5;" class="doc-mock-tag"></span>
+                        <span style="width: 46px;"><i class="bi bi-eye-slash text-success"></i> <i class="bi bi-x-lg text-danger" style="opacity:.5"></i></span>
+                    </div>
+                    <div class="doc-mock-row">
+                        <i class="bi bi-grip-vertical doc-mock-grip"></i>
+                        <span style="flex: 2; font-weight: 600;">Sermon</span>
+                        <span style="flex: 2; color: var(--bs-secondary-color);">Elder Smith — "Faith"</span>
+                        <span style="flex: 1.5;" class="doc-mock-tag">{{sermon}}</span>
+                        <span style="width: 46px;"><i class="bi bi-eye"></i> <i class="bi bi-x-lg text-danger" style="opacity:.5"></i></span>
+                    </div>
+                </div>
+                <p class="doc-fig-caption">The items table: drag the grip to reorder, every cell auto-saves, the eye toggles muting. The middle row is muted — hidden from vMix and the Dashboard.</p>
+            </div>
+            <ul>
+                <li><strong>Program name</strong> — the large input in the top bar. It saves automatically
+                    when you click away; a small "Saved ✓" indicator confirms each save.</li>
+                <li><strong>Template selector</strong> — assigns one of your uploaded .pptx templates to this
+                    program (or "No Template"). Saves automatically on change.</li>
+                <li><strong>Add Event</strong> — appends a blank row. Fill in the title, person/description,
+                    and optionally a tag; each field saves when changed.</li>
+                <li><strong>Reorder</strong> — drag rows by the grip handle; the new order saves on drop and
+                    is reflected everywhere (Dashboard, feed, PPT).</li>
+                <li><strong>Delete row</strong> — the × at the row end removes the item immediately (no
+                    confirmation).</li>
+                <li><strong>Download PPT</strong> — opens the Service Program PPT dialog
+                    (<a href="#ppt-program">details below</a>). Requires a template.</li>
+                <li><strong>More menu (⋯)</strong> — <em>View JSON</em> opens the program's feed for
+                    inspection; <em>Delete Program</em> removes the program and all its items after a
+                    confirmation prompt.</li>
+                <li>A <strong>PPT Pattern Reference</strong> card at the bottom of the page summarizes all
+                    placeholder patterns currently valid for your templates, including any enabled data-table
+                    patterns.</li>
+            </ul>
+
+            <h5 class="doc-section" id="programs-tags">PPT tags &amp; muting</h5>
+            <ul>
+                <li>A <strong>tag</strong> connects a program item to a placeholder in your PowerPoint
+                    template: if an item has tag <code>sermon</code> and subtitle
+                    <code>Elder Smith — "Faith"</code>, then every occurrence of
+                    <code>{{sermon}}</code> in the template is replaced with that subtitle.</li>
+                <li><strong>Reserved names</strong> are rejected with an error toast, both in the browser and
+                    on the server:
+                    <ul>
+                        <li><code>hymn_1</code>, <code>hymn_2</code>, … — reserved for hymn insertion.</li>
+                        <li><code>&lt;pattern&gt;_1</code>, <code>&lt;pattern&gt;_2</code>, … where
+                            <code>&lt;pattern&gt;</code> is an enabled data-table pattern name.</li>
+                    </ul>
+                </li>
+                <li><strong>Muting</strong> (the eye toggle) hides an item from the Dashboard's Order of
+                    Service and from the vMix JSON feed — but the item's tag is <em>still replaced</em> in
+                    generated PowerPoints. Use it for internal notes or for items that should appear only in
+                    the printed/projected program.</li>
+            </ul>
+        </div>
+
+        <!-- ── 5. Templates ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="templates">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-amber me-2"><i class="bi bi-file-earmark-slides"></i></span>5. PowerPoint templates</h4>
+            <p>
+                The Templates manager (<code>/templates_manager</code>, linked from the Programs page) stores
+                the .pptx files that Service Program PPTs are built from.
+            </p>
+            <h5>Uploading</h5>
+            <ul>
+                <li><strong>Drag &amp; drop</strong> a <code>.pptx</code> file onto the upload zone, or click
+                    <em>Browse files</em>. Only .pptx is accepted; anything else shows an error.</li>
+                <li>The <strong>Template Name</strong> is auto-suggested from the file name (underscores and
+                    dashes become spaces) and can be edited before uploading.</li>
+                <li>Uploaded files are stored in the Templates folder configured in Settings.</li>
+            </ul>
+            <h5>Managing</h5>
+            <ul>
+                <li>Saved templates appear as cards showing the display name and the stored file name.</li>
+                <li><strong>Delete</strong> asks for confirmation and warns that programs using the template
+                    will lose their assignment.</li>
+            </ul>
+            <h5>Authoring a template</h5>
+            <p>Design your .pptx freely in PowerPoint, then place these placeholders in text boxes where content should be injected:</p>
+            <table class="table table-sm">
+                <thead><tr><th>Placeholder</th><th>Replaced with</th></tr></thead>
+                <tbody>
+                    <tr><td><code>{{tag}}</code></td><td>The <em>Person / Description</em> of the program item whose PPT Tag is <code>tag</code>.</td></tr>
+                    <tr><td><code>{{name_1}}</code>, <code>{{name_2}}</code>, …</td><td>Values from the data table whose pattern is <code>name</code> — one per row, in row order.</td></tr>
+                    <tr><td><code>{{hymn_1}}</code>, <code>{{hymn_2}}</code>, …</td><td>The whole slide is <em>exploded</em> into a hymn title slide plus one slide per lyrics block, using the Nth hymn of the service plan.</td></tr>
+                </tbody>
+            </table>
+            <p class="mb-0">
+                Style the <code>{{hymn_N}}</code> placeholder slide (background, positioning, font) exactly the
+                way you want the generated hymn slides to look — the generated slides are copies of it, and
+                with <em>Inherit fonts from template</em> enabled they even use the placeholder's own font
+                (see <a href="#ppt-inherit">font inheritance</a>).
+            </p>
+        </div>
+
+        <!-- ── 6. Hymns view ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="hymns">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-indigo me-2"><i class="bi bi-music-note-list"></i></span>6. Hymns view</h4>
+            <p>
+                The Hymns view (<code>/hymns</code>) is where you pick which hymns will be sung. The left
+                panel is today's <strong>service plan</strong>; the right panel is the full
+                <strong>library</strong>.
+            </p>
+
+            <h5 class="doc-section" id="hymns-plan">Service hymns plan (left panel)</h5>
+            <div class="doc-fig">
+                <div class="doc-mock" style="max-width: 430px; margin: 0 auto;">
+                    <div class="doc-mock-row">
+                        <i class="bi bi-grip-vertical doc-mock-grip"></i>
+                        <span class="doc-mock-seq">1</span>
+                        <span class="doc-mock-num">123</span>
+                        <span style="flex: 1; font-weight: 600;">Amazing Grace</span>
+                        <i class="bi bi-eye" style="color: var(--bs-secondary-color);"></i>
+                        <i class="bi bi-x-lg text-danger" style="opacity: 0.5;"></i>
+                    </div>
+                    <div class="doc-mock-row">
+                        <i class="bi bi-grip-vertical doc-mock-grip"></i>
+                        <span class="doc-mock-seq">2</span>
+                        <span class="doc-mock-num">86</span>
+                        <span style="flex: 1; font-weight: 600;">How Great Thou Art</span>
+                        <i class="bi bi-eye" style="color: var(--bs-secondary-color);"></i>
+                        <i class="bi bi-x-lg text-danger" style="opacity: 0.5;"></i>
+                    </div>
+                </div>
+                <p class="doc-fig-caption">A plan row: drag handle · sequence · hymn number · title · preview (eye) · remove (×).</p>
+            </div>
+            <ul>
+                <li><strong>Add</strong> hymns from the library (right panel) — each lands at the end of the
+                    plan.</li>
+                <li><strong>Reorder</strong> by dragging the grip handle; sequence numbers renumber
+                    instantly and the order saves on drop.</li>
+                <li><strong>Remove</strong> with the ×; the remaining hymns renumber automatically
+                    (1, 2, 3…).</li>
+                <li>The plan's order defines the hymn numbering used by <code>{{hymn_N}}</code> template
+                    placeholders and by the vMix hymns feed.</li>
+            </ul>
+
+            <h5 class="doc-section" id="hymns-library">Hymn library &amp; search (right panel)</h5>
+            <ul>
+                <li>The search box matches as you type (250 ms debounce) against <strong>hymn number,
+                    title, and the lyrics text itself</strong>, case-insensitively — so a remembered lyric
+                    fragment is enough to find a song.</li>
+                <li>Results sort naturally: numeric hymn numbers first in numeric order (2 before 10), then
+                    non-numeric entries alphabetically.</li>
+                <li>The eye icon previews any hymn (vMix and PowerPoint slide sets in two tabs);
+                    <strong>Add</strong> puts it in the plan.</li>
+                <li>The <strong>vMix Feed</strong> button opens the live hymns feed
+                    (<code>/api/hymns/service</code>) in a new tab.</li>
+            </ul>
+
+            <h5 class="doc-section" id="hymns-ppt">Hymns PPT download</h5>
+            <p>The <strong>Download PPT</strong> button opens a settings dialog; the file downloads in a new tab when you confirm. Every option:</p>
+            <table class="table table-sm">
+                <thead><tr><th>Option</th><th>Choices</th><th>Default</th></tr></thead>
+                <tbody>
+                    <tr><td>Aspect Ratio</td><td>Standard (4:3) or Widescreen (16:9)</td><td>4:3</td></tr>
+                    <tr><td>Font Family</td><td>Arial, Calibri, Times New Roman, Verdana, Tahoma, Century Gothic, or <em>Manual input…</em> (type any installed font's exact name)</td><td>Arial</td></tr>
+                    <tr><td>Title Size</td><td>20–200 pt</td><td>80</td></tr>
+                    <tr><td>Lyrics Size</td><td>20–200 pt</td><td>60</td></tr>
+                    <tr><td>Background Color</td><td>Any color — click the field for an in-page picker with a gradient, hue bar, and preset swatches; or type a hex value like <code>#1a237e</code></td><td>Black</td></tr>
+                    <tr><td>Text Color</td><td>Same picker</td><td>White</td></tr>
+                </tbody>
+            </table>
+            <p class="mb-0">
+                The file is named <code>Sabbath_Service_&lt;aspect&gt;_&lt;date&gt;_&lt;time&gt;.pptx</code>.
+                See <a href="#ppt-hymns">how the slides are laid out</a>.
+            </p>
+        </div>
+
+        <!-- ── 7. Hymn Editor ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="editor">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-violet me-2"><i class="bi bi-pencil-square"></i></span>7. Hymn Editor</h4>
+            <p>
+                The Hymn Editor (<code>/editor</code>) is where hymns are created and their lyrics split into
+                slides. Each hymn holds <strong>two independent slide sets</strong>: <em>vMix (Live)</em> for
+                lower-third titles and <em>PowerPoint</em> for full-screen slides — because line lengths and
+                block sizes usually differ between the two.
+            </p>
+            <ul>
+                <li><strong>Sidebar</strong> — searchable hymn list (same matching rules as the library
+                    search). Click a hymn to load it; <strong>New</strong> starts a blank one. The sidebar can
+                    be collapsed with the chevron button or resized by dragging its edge (180–700 px; dragging
+                    below ~80 px collapses it).</li>
+                <li><strong>Number &amp; Title</strong> — both required. A purely numeric number (e.g.
+                    <code>123</code>) is treated as a hymnal number and shown as "Hymn #123" on generated
+                    title slides; a non-numeric value is treated as a worship song and only the title is
+                    shown.</li>
+                <li><strong>Save All</strong> — saves the hymn and both slide sets at once. The button shows
+                    its state: <em>Saving…</em> → <em>Saved!</em> (or <em>Error</em> in red). After the first
+                    save of a new hymn, the form switches to edit mode and a <strong>Delete</strong> button
+                    appears (with a confirmation prompt).</li>
+            </ul>
+
+            <h5 class="doc-section" id="editor-format">Slide source format</h5>
+            <p>Each tab has a plain-text source editor on the left and a live slide preview on the right. The rules:</p>
+            <div class="doc-fig">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-6">
+<div class="doc-src"><span class="doc-label">[Verse 1]</span>
+Amazing grace, how sweet the sound
+That saved a wretch like me
+
+I once was lost, but now am found
+Was blind but now I see
+
+<span class="doc-label">[Chorus]</span>
+Praise God, praise God</div>
+                    </div>
+                    <div class="col-md-1 doc-arrow"><i class="bi bi-arrow-right d-none d-md-block"></i><i class="bi bi-arrow-down d-md-none"></i></div>
+                    <div class="col-md-5">
+                        <div class="d-flex flex-column gap-2">
+                            <div class="doc-slide"><span class="doc-slide-small">Verse 1</span>Amazing grace, how sweet the sound<br>That saved a wretch like me</div>
+                            <div class="doc-slide"><span class="doc-slide-small" style="opacity:.5">Verse 1 (inherited)</span>I once was lost, but now am found<br>Was blind but now I see</div>
+                            <div class="doc-slide"><span class="doc-slide-small">Chorus</span>Praise God, praise God</div>
+                        </div>
+                    </div>
+                </div>
+                <p class="doc-fig-caption">A blank line starts a new slide; a <code>[Label]</code> line names the slide and following slides inherit the label until a new one appears.</p>
+            </div>
+            <ul>
+                <li><strong>Blank line</strong> (an empty line between text blocks) — starts a new slide.</li>
+                <li><strong><code>[Label]</code></strong> on its own line — names the slide (Verse 1, Chorus,
+                    Bridge…). Later slides <em>inherit</em> the most recent label (shown dimmed in the
+                    preview) until you write a new one.</li>
+                <li>In the preview, labels starting with "v" get a blue badge and "c" a green badge, making
+                    verse/chorus structure easy to scan.</li>
+            </ul>
+
+            <h5 class="doc-section" id="editor-wrap">Line-length warnings (Wrap)</h5>
+            <ul>
+                <li>Each editor has a <strong>Wrap</strong> number box in its header. Set it to your safe
+                    character count per line (leave empty for no checking).</li>
+                <li>Characters beyond the limit are highlighted red directly in the source editor, and
+                    affected preview slides get a warning badge — so overly long lines are caught before they
+                    overflow on screen.</li>
+                <li>The limits are stored per slide type (vMix and PPT separately) and persist across
+                    sessions and machines using the same database.</li>
+            </ul>
+        </div>
+
+        <!-- ── 8. PPT generation ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="ppt-generation">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-file-earmark-slides"></i></span>8. How PPTs are generated</h4>
+
+            <h5 class="doc-section" id="ppt-program">Service Program PPT (template-based)</h5>
+            <p>Available from the Dashboard and the program editor when a template is assigned. The generator makes three passes over a copy of your template:</p>
+            <ol>
+                <li><strong>Tag replacement</strong> — every <code>{{tag}}</code> matching a program item's
+                    PPT Tag is replaced with that item's Person/Description text (muted items included).</li>
+                <li><strong>Data table patterns</strong> — every <code>{{name_N}}</code> from enabled
+                    patterns is replaced with the value from row N of the corresponding table.</li>
+                <li><strong>Hymn explosion</strong> — each slide containing <code>{{hymn_N}}</code> is
+                    duplicated into a title slide plus one slide per lyrics block of the Nth planned hymn,
+                    then the original placeholder slide is deleted.</li>
+            </ol>
+            <div class="doc-fig">
+                <div class="row g-2 align-items-center">
+                    <div class="col-3">
+                        <div class="doc-slide doc-slide-template">{{hymn_1}}</div>
+                        <div class="doc-flow-label">Template slide<br>(styled by you)</div>
+                    </div>
+                    <div class="col-1 doc-arrow"><i class="bi bi-arrow-right"></i></div>
+                    <div class="col-8">
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <div class="doc-slide" style="background: linear-gradient(135deg, #14532d, #166534);">
+                                    <span class="doc-slide-small">Hymn #123</span>
+                                    <span class="doc-slide-title">Amazing Grace</span>
+                                </div>
+                                <div class="doc-flow-label">Title slide</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="doc-slide" style="background: linear-gradient(135deg, #14532d, #166534);">Amazing grace,<br>how sweet the sound…</div>
+                                <div class="doc-flow-label">Lyrics slide 1</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="doc-slide" style="background: linear-gradient(135deg, #14532d, #166534);">I once was lost,<br>but now am found…</div>
+                                <div class="doc-flow-label">Lyrics slide 2 …</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="doc-fig-caption">Hymn explosion: the placeholder slide's design (background, images, layout) is copied to every generated slide.</p>
+            </div>
+            <ul>
+                <li>The title slide shows "Hymn #N" (at half the title size) above the bold title for
+                    numeric hymn numbers, or just the bold title for worship songs.</li>
+                <li>If the plan has no hymn at position N, the slide reads
+                    <em>"(Hymn #N not scheduled)"</em> so the gap is visible instead of silent.</li>
+                <li>The download dialog's font settings apply to <strong>hymn slides only</strong>; every
+                    other slide is your template, untouched.</li>
+            </ul>
+
+            <h5 class="doc-section" id="ppt-inherit">Font inheritance ("Inherit fonts from template")</h5>
+            <ul>
+                <li>With the switch <strong>off</strong> (default), hymn slides use the Font Family, Title
+                    Size, and Lyrics Size you set in the dialog.</li>
+                <li>With the switch <strong>on</strong>, the manual controls are disabled and the generator
+                    reads the font of the <code>{{hymn_N}}</code> placeholder itself — resolving through
+                    PowerPoint's full style hierarchy (text formatting → shape → slide layout → slide
+                    master), so it works even when the font is defined on the layout rather than typed
+                    formatting.</li>
+                <li>Lyrics use the placeholder's font and size; <strong>titles render 20% larger</strong>
+                    than the lyrics. Each <code>{{hymn_N}}</code> slide is resolved independently, so
+                    different hymns can use different fonts if your template does.</li>
+                <li>If the template genuinely defines no font anywhere in the chain, the dialog values are
+                    used as a fallback.</li>
+            </ul>
+
+            <h5 class="doc-section" id="ppt-hymns">Standalone Hymns PPT (no template)</h5>
+            <ul>
+                <li>Generated from the Hymns view or Dashboard using only the service plan — no template
+                    needed.</li>
+                <li>Slides are 10″ × 7.5″ (4:3) or 16″ × 9″ (16:9) with a 0.5″ safe margin, filled with your
+                    chosen <strong>background color</strong> (default black) and <strong>text color</strong>
+                    (default white), text centered vertically and horizontally with word-wrap and
+                    shrink-to-fit.</li>
+                <li>Per hymn: a title slide ("Hymn #N" at half title size + bold title, or just the title
+                    for worship songs), then one slide per PPT lyrics block, then an empty spacer slide
+                    before the next hymn (nothing after the last).</li>
+            </ul>
+        </div>
+
+        <!-- ── 9. Data Tables ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="data-tables">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-amber me-2"><i class="bi bi-table"></i></span>9. Data Tables</h4>
+            <p>
+                Data Tables (<code>/data-tables</code>) are free-form spreadsheets you define — announcements,
+                Bible verses, schedules, teams. Each table is served as a JSON feed for vMix and can
+                optionally inject its values into PowerPoint templates.
+            </p>
+            <h5>Creating and editing</h5>
+            <ul>
+                <li><strong>New Table</strong> asks for a name and column names (add or remove columns
+                    freely).</li>
+                <li>In the table editor, cells are auto-expanding text areas that <strong>save on
+                    change</strong>; rows drag-reorder by the grip handle; <strong>Add Row</strong> appends
+                    at the bottom; the trash icon deletes a row.</li>
+                <li>The table name edits in place in the top bar (auto-saves, "Saved ✓" indicator).</li>
+                <li><strong>Edit Columns</strong> lets you rename, add, or remove columns —
+                    <em>removing a column deletes its data from all rows</em> (the dialog warns you).</li>
+                <li>The bar under the title shows the table's feed URL
+                    (<code>/api/feed/&lt;slug&gt;</code>) with a one-click <strong>Copy</strong> button.</li>
+            </ul>
+            <h5>PPT patterns</h5>
+            <div class="doc-fig">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-5">
+                        <div class="doc-mock">
+                            <div class="doc-mock-row" style="background: var(--bs-tertiary-bg); font-weight:600; font-size:.7rem; color: var(--bs-secondary-color);">
+                                <span style="flex:1;">TIME</span><span style="flex:2;">EVENT</span>
+                            </div>
+                            <div class="doc-mock-row"><span style="flex:1;">9:30</span><span style="flex:2;">Sabbath School</span></div>
+                            <div class="doc-mock-row"><span style="flex:1;">11:00</span><span style="flex:2;">Divine Service</span></div>
+                        </div>
+                        <div class="doc-flow-label">Table "Schedule", pattern <code>schedule</code>, value column <code>EVENT</code></div>
+                    </div>
+                    <div class="col-md-1 doc-arrow"><i class="bi bi-arrow-right d-none d-md-block"></i><i class="bi bi-arrow-down d-md-none"></i></div>
+                    <div class="col-md-6">
+                        <div class="doc-src">Today at our church:
+• {{schedule_1}}   →   Sabbath School
+• {{schedule_2}}   →   Divine Service</div>
+                        <div class="doc-flow-label">Placeholders in the template become row values, in row order</div>
+                    </div>
+                </div>
+            </div>
+            <ul>
+                <li>Open <strong>PPT Pattern</strong> in the table editor, enable the toggle, choose a
+                    <strong>pattern name</strong> and the <strong>value column</strong>.</li>
+                <li>Pattern names must be lowercase (<code>a–z</code>, digits, underscores, starting with a
+                    letter), unique across tables, and may not start with <code>hymn</code> (reserved).</li>
+                <li>When enabled, an <strong>ON</strong> badge shows on the button, and program item tags
+                    that would collide with the pattern (like <code>schedule_1</code>) are rejected.</li>
+            </ul>
+        </div>
+
+        <!-- ── 10. vMix integration ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="vmix">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-indigo me-2"><i class="bi bi-broadcast"></i></span>10. vMix integration (API)</h4>
+            <p>
+                In vMix, add a <strong>Data Source</strong> of type <em>JSON / URL</em> pointing at any of
+                these endpoints (use the machine's IP when vMix runs on another computer). vMix polls the URL
+                and the mapped title fields update live.
+            </p>
+            <table class="table table-sm">
+                <thead><tr><th>Endpoint</th><th>Content</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><code>/api/hymns/service</code></td>
+                        <td>Every slide of every planned hymn, in order. Fields per row:
+                            <code>HymnNumber</code>, <code>Title</code>, <code>Label</code>,
+                            <code>SlideText</code>. An all-empty spacer row separates hymns (useful as a
+                            blank between songs).</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/program/current</code></td>
+                        <td>The active program's items (muted excluded), each with <code>title</code> and
+                            <code>subtitle</code>. With no active program it returns a single row titled
+                            "No Active Program".</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/program/{id}/json</code></td>
+                        <td>Same shape for a specific program (404 if it doesn't exist).</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/feed/{slug}</code></td>
+                        <td>A data table's rows as JSON objects keyed by column name, in row order.</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/version</code></td>
+                        <td>The app version, e.g. <code>{"version": "1.1.1"}</code>.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <pre><code>[
+  {"HymnNumber": "123", "Title": "Amazing Grace", "Label": "Verse 1",
+   "SlideText": "Amazing grace, how sweet the sound…"},
+  {"HymnNumber": "123", "Title": "Amazing Grace", "Label": "Chorus",
+   "SlideText": "Praise God, praise God…"},
+  {"HymnNumber": "", "Title": "", "Label": "", "SlideText": ""}
+]</code></pre>
+            <p class="mb-0">Example of <code>/api/hymns/service</code> output — the last row is the spacer between hymns.</p>
+        </div>
+
+        <!-- ── 11. Monitoring ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="monitoring">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-graph-up"></i></span>11. Monitoring</h4>
+            <ul>
+                <li>The Monitoring page shows <strong>live requests-per-second charts</strong> for
+                    <code>/api/hymns/service</code>, <code>/api/program/current</code>, and each data table
+                    feed — a quick way to confirm vMix is actually polling.</li>
+                <li>Charts update every second over a rolling 60-second window; the badge next to each chart
+                    shows the current rate.</li>
+                <li>A flat zero line means vMix is not connected to that feed (check the Data Source URL and
+                    that both machines are on the same network).</li>
+            </ul>
+        </div>
+
+        <!-- ── 12. Settings ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="settings">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-violet me-2"><i class="bi bi-gear"></i></span>12. Settings</h4>
+            <ul>
+                <li><strong>Database File Path</strong> — where the SQLite database lives (all hymns,
+                    programs, tables, and settings). <em>Changing it requires an app restart.</em> If you
+                    point it at a path that doesn't exist yet, a fresh database is created there.</li>
+                <li><strong>Templates Folder Path</strong> — where uploaded .pptx templates are stored.
+                    Changes apply immediately.</li>
+                <li>Both fields have a <strong>Browse</strong> button that opens a native file/folder
+                    picker on the server machine.</li>
+                <li><strong>Sync tip:</strong> point both paths into a Google Drive (or similar) synced
+                    folder to share the same library and templates across several computers.</li>
+                <li>The <strong>Info card</strong> shows the app version, the database schema version, and
+                    the location of <code>config.json</code> — a small file next to the executable that
+                    remembers your custom paths between updates.</li>
+                <li>On a fresh install (or if the configured database is missing) the app routes you here
+                    first and unlocks the rest of the UI once paths are saved.</li>
+            </ul>
+        </div>
+
+        <!-- ── 13. Troubleshooting ── -->
+        <div class="cm-card p-4 mt-4 mb-4 doc-section" id="troubleshooting">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-amber me-2"><i class="bi bi-life-preserver"></i></span>13. Tips &amp; troubleshooting</h4>
+            <table class="table table-sm align-middle">
+                <thead><tr><th style="width: 40%;">Symptom</th><th>Likely cause &amp; fix</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>Generated PPT shows a different font than selected</td>
+                        <td>The font must be installed on the computer that <em>opens</em> the file —
+                            PowerPoint silently substitutes missing fonts. Stick to universal fonts or
+                            install the font on the presentation machine.</td>
+                    </tr>
+                    <tr>
+                        <td><code>{{tag}}</code> text still visible in the generated PPT</td>
+                        <td>The tag doesn't match any program item's PPT Tag (they must be identical), the
+                            item's Person/Description is empty, or the placeholder is split across separate
+                            text boxes. Keep each placeholder in one text box.</td>
+                    </tr>
+                    <tr>
+                        <td>A hymn slide reads "(Hymn #N not scheduled)"</td>
+                        <td>The template asks for hymn N but the service plan has fewer hymns. Add hymns in
+                            the Hymns view or remove the extra <code>{{hymn_N}}</code> slide from the
+                            template.</td>
+                    </tr>
+                    <tr>
+                        <td>vMix shows stale or no data</td>
+                        <td>Check the Monitoring page — if the feed's chart is flat, vMix isn't polling.
+                            Verify the Data Source URL, IP address, and firewall rules for port
+                            <code>10001</code>.</td>
+                    </tr>
+                    <tr>
+                        <td>An item is missing from the Dashboard / vMix feed</td>
+                        <td>It's probably muted — look for the green eye-slash icon in the program editor and
+                            click it to unmute.</td>
+                    </tr>
+                    <tr>
+                        <td>Tag rejected as "reserved" or "conflicts with data table pattern"</td>
+                        <td><code>hymn_N</code> style names and enabled pattern names are reserved for
+                            template placeholders. Pick a different tag name.</td>
+                    </tr>
+                    <tr>
+                        <td>Changed the database path but nothing happened</td>
+                        <td>Database path changes take effect after restarting the application (the save
+                            message reminds you).</td>
+                    </tr>
+                    <tr>
+                        <td>Long lyrics lines overflow on screen during the service</td>
+                        <td>Set the <strong>Wrap</strong> limit in the Hymn Editor to your safe line length —
+                            offending lines are highlighted red before they ever reach the screen.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="mb-0">
+                <strong>Backups:</strong> everything except uploaded templates lives in the single SQLite
+                database file — copying that file (plus the templates folder) is a complete backup.
+            </p>
+        </div>
+
+    </div>
+</div>
+{% endraw %}
+{% endblock %}
