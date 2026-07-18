@@ -38,6 +38,9 @@ def _setup_logging():
 
 _setup_logging()
 
+from services import logbuffer
+logbuffer.install()
+
 import uvicorn
 
 from config import settings

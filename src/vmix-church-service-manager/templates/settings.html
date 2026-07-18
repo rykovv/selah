@@ -134,7 +134,53 @@
                         style="background: var(--bs-tertiary-bg); font-size: 0.75rem; max-height: 140px; overflow-y: auto; white-space: pre-wrap;"
                         id="update-notes"></pre>
                 </div>
+
+                <hr class="my-3">
+
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <div class="fw-semibold d-flex align-items-center gap-2">
+                            <i class="bi bi-power text-primary"></i> Application control
+                        </div>
+                        <div class="form-text mb-0" id="appctl-status">
+                            Restart applies a changed database path; quit closes the app
+                            (e.g. before running an installer manually).
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1"
+                            id="app-restart-btn" onclick="restartApp()">
+                            <i class="bi bi-arrow-clockwise"></i> Restart Now
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1"
+                            id="app-quit-btn" onclick="quitApp()">
+                            <i class="bi bi-x-octagon"></i> Quit App
+                        </button>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <div class="cm-card mt-4">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-indigo">
+                        <i class="bi bi-terminal"></i>
+                    </span>
+                    Live Log
+                </h5>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                            id="log-follow" checked>
+                        <label class="form-check-label small" for="log-follow">Follow</label>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="clearLogView()">Clear view</button>
+                </div>
+            </div>
+            <pre id="log-view" class="mb-0 p-3 font-monospace"
+                style="height: 300px; overflow-y: auto; font-size: 0.72rem; line-height: 1.5; background: var(--bs-tertiary-bg); border-radius: 0 0 14px 14px; white-space: pre-wrap; word-break: break-all;">Waiting for log entries…</pre>
         </div>
     </div>
 
@@ -340,12 +386,85 @@ function installUpdate() {
         .catch(function () { /* server likely exited to install */ });
 }
 
+/* ── Restart / Quit ── */
+function waitForServerAndReload(statusEl) {
+    var retry = setInterval(function () {
+        fetch('/api/version')
+            .then(function () { clearInterval(retry); location.reload(); })
+            .catch(function () { });
+    }, 2000);
+}
+
+function restartApp() {
+    var btn = document.getElementById('app-restart-btn');
+    var status = document.getElementById('appctl-status');
+    btn.disabled = true;
+    document.getElementById('app-quit-btn').disabled = true;
+    fetch('/api/app/restart', { method: 'POST' })
+        .then(function () {
+            status.textContent = 'Restarting… this page reloads automatically when the app is back.';
+            cmToast('Restarting the application…', 'warning');
+            setTimeout(function () { waitForServerAndReload(status); }, 3000);
+        })
+        .catch(function () {
+            btn.disabled = false;
+            document.getElementById('app-quit-btn').disabled = false;
+            cmToast('Could not reach the server.', 'error');
+        });
+}
+
+function quitApp() {
+    if (!confirm('Quit the application? The web interface will stop working until it is started again.')) return;
+    var status = document.getElementById('appctl-status');
+    document.getElementById('app-restart-btn').disabled = true;
+    document.getElementById('app-quit-btn').disabled = true;
+    fetch('/api/app/shutdown', { method: 'POST' })
+        .then(function () {
+            status.textContent = 'Application closed. You can close this tab.';
+            cmToast('Application is shutting down.', 'warning');
+        })
+        .catch(function () {
+            cmToast('Could not reach the server.', 'error');
+        });
+}
+
+/* ── Live log ── */
+var _logLastSeq = 0;
+var _logTimer = null;
+
+function clearLogView() {
+    document.getElementById('log-view').textContent = '';
+}
+
+function pollLogs() {
+    fetch('/api/logs?since=' + _logLastSeq)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.entries || !data.entries.length) return;
+            var view = document.getElementById('log-view');
+            if (_logLastSeq === 0) view.textContent = '';
+            var nearBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 40;
+            var text = data.entries.map(function (e) { return e.line; }).join('\n');
+            view.textContent += (view.textContent ? '\n' : '') + text;
+            _logLastSeq = data.last_seq;
+            // Trim the view so it never grows unbounded
+            var lines = view.textContent.split('\n');
+            if (lines.length > 2000) view.textContent = lines.slice(-2000).join('\n');
+            if (document.getElementById('log-follow').checked && nearBottom) {
+                view.scrollTop = view.scrollHeight;
+            }
+        })
+        .catch(function () { });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     loadAutostart();
     fetch('/api/update/status')
         .then(function (r) { return r.json(); })
         .then(renderUpdateState)
         .catch(function () {});
+    pollLogs();
+    _logTimer = setInterval(pollLogs, 2000);
 });
 
 function onPathsSaved(evt) {
@@ -360,7 +479,7 @@ function onPathsSaved(evt) {
     var needsRestart = msg.toLowerCase().indexOf('restart') !== -1;
 
     if (needsRestart) {
-        cmToast(msg, 'warning');
+        cmToast(msg + ' Use the <strong>Restart Now</strong> button in Application control.', 'warning');
     } else {
         cmToast(msg || 'Settings saved.', 'success');
     }

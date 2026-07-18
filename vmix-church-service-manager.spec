@@ -22,6 +22,8 @@ a = Analysis(
         'services.monitoring',
         'services.updater',
         'services.autostart',
+        'services.appcontrol',
+        'services.logbuffer',
     ],
     hookspath=[],
     hooksconfig={},

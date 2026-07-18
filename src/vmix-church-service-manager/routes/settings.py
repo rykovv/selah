@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from config import settings
 from config_file import config_path, set_config
 from database import get_schema_version, init_db_at
-from services import autostart, updater
+from services import appcontrol, autostart, logbuffer, updater
 
 router = APIRouter()
 
@@ -102,6 +102,31 @@ def set_autostart(data: dict = Body(...)):
     except RuntimeError as exc:
         return JSONResponse({"detail": str(exc)}, status_code=400)
     return JSONResponse({"supported": True, "enabled": enabled})
+
+
+# ---------------------------------------------------------------------------
+# Application control & logs
+# ---------------------------------------------------------------------------
+
+@router.post("/api/app/restart")
+def app_restart():
+    appcontrol.restart()
+    return JSONResponse({"ok": True, "action": "restart"})
+
+
+@router.post("/api/app/shutdown")
+def app_shutdown():
+    appcontrol.shutdown()
+    return JSONResponse({"ok": True, "action": "shutdown"})
+
+
+@router.get("/api/logs")
+def app_logs(since: int = 0, limit: int = 500):
+    entries, last = logbuffer.entries_since(since, limit)
+    return JSONResponse({
+        "entries": [{"seq": s, "line": m} for s, m in entries],
+        "last_seq": last,
+    })
 
 
 # ---------------------------------------------------------------------------
