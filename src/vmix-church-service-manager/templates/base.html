@@ -928,6 +928,22 @@
                 if (active) link.classList.add('active');
             });
         })();
+
+        /* ─── Update-available notice (once per browser session) ─── */
+        (function () {
+            if (window.location.pathname.startsWith('/settings')) return;
+            if (sessionStorage.getItem('cm-update-notified')) return;
+            fetch('/api/update/status')
+                .then(function (r) { return r.json(); })
+                .then(function (s) {
+                    if (s && s.status === 'update_available') {
+                        sessionStorage.setItem('cm-update-notified', '1');
+                        cmToast('Version ' + s.latest_version + ' is available — ' +
+                            '<a href="/settings">install it from Settings</a>.', 'warning');
+                    }
+                })
+                .catch(function () { });
+        })();
     </script>
 </body>
 

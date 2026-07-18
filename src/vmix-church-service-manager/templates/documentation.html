@@ -280,8 +280,27 @@
         <!-- ── 2. Getting started ── -->
         <div class="cm-card p-4 mt-4 doc-section" id="getting-started">
             <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-rocket-takeoff"></i></span>2. Getting started</h4>
+            <h5 class="mt-2">Installation</h5>
             <ul>
-                <li><strong>Launch:</strong> run the application executable (or <code>python app.py</code> in
+                <li><strong>Install:</strong> download
+                    <code>vmix-church-service-manager-setup-&lt;version&gt;.exe</code> from the project's
+                    GitHub Releases page and run it. The wizard installs per-user (no administrator rights
+                    needed), creates a Start Menu entry, and offers two options: a desktop icon and
+                    <em>"Start automatically when Windows starts"</em>.</li>
+                <li><strong>File locations</strong> (following Windows conventions):
+                    program files in <code>%LOCALAPPDATA%\Programs\vMix Church Service Manager</code>;
+                    your data (database, uploaded templates, config) in
+                    <code>%APPDATA%\vMix Church Service Manager</code>;
+                    log files in <code>%LOCALAPPDATA%\vMix Church Service Manager\logs</code>.
+                    Updates never touch your data.</li>
+                <li><strong>Background app:</strong> the installed app runs without a console window. Server
+                    activity is written to rotating log files in the logs folder above.</li>
+                <li><strong>Uninstall:</strong> use Windows "Apps &amp; features". The uninstaller asks
+                    whether to keep or remove your data.</li>
+            </ul>
+            <h5>Running</h5>
+            <ul>
+                <li><strong>Launch:</strong> use the Start Menu shortcut (or <code>python app.py</code> in
                     development). It starts a web server on port <code>10001</code> listening on all network
                     interfaces.</li>
                 <li><strong>Open the UI:</strong> browse to <code>http://localhost:10001</code> on the same
@@ -856,6 +875,19 @@ Praise God, praise God</div>
                     remembers your custom paths between updates.</li>
                 <li>On a fresh install (or if the configured database is missing) the app routes you here
                     first and unlocks the rest of the UI once paths are saved.</li>
+            </ul>
+            <h5>Startup &amp; Updates</h5>
+            <ul>
+                <li><strong>Start automatically when Windows starts</strong> — a switch that registers (or
+                    removes) the app in the current user's Windows startup entries. It is the same option
+                    the installer offers, so either place can turn it on or off. Available in the installed
+                    app only.</li>
+                <li><strong>Application updates</strong> — the installed app checks the project's GitHub
+                    releases shortly after launch and once a day. When a newer version exists, a
+                    notification appears (once per browser session) and the Settings page shows an
+                    <strong>Install &amp; Restart</strong> button with the release notes. Clicking it
+                    downloads the new installer, applies it silently, and relaunches the app — your data is
+                    untouched. <strong>Check for Updates</strong> runs a check on demand.</li>
             </ul>
         </div>
 

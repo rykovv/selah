@@ -1,31 +1,26 @@
-"""Persistent config file next to the application executable.
+"""Persistent config file for the application.
 
 Stores database and template paths so the app can find them on any machine,
 even before the bootstrap database exists.
 
-Location: same directory as the .exe (frozen) or the source directory (dev).
+Location: %APPDATA%\\vMix Church Service Manager (frozen — survives updates
+that replace the install directory) or the source directory (dev).
 """
 
 import json
 import logging
 import os
-import sys
+
+from paths import data_dir
 
 logger = logging.getLogger(__name__)
 
 _CONFIG_FILENAME = "config.json"
 
 
-def _app_dir() -> str:
-    """Return the directory where the app lives (exe dir or source dir)."""
-    if getattr(sys, "frozen", False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
-
-
 def config_path() -> str:
     """Full path to the config JSON file."""
-    return os.path.join(_app_dir(), _CONFIG_FILENAME)
+    return os.path.join(data_dir(), _CONFIG_FILENAME)
 
 
 def read_config() -> dict:

@@ -85,6 +85,57 @@
                 </form>
             </div>
         </div>
+
+        <div class="cm-card mt-4">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-amber">
+                        <i class="bi bi-power"></i>
+                    </span>
+                    Startup &amp; Updates
+                </h5>
+            </div>
+            <div class="p-4">
+
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" role="switch"
+                        id="autostart-switch" onchange="onAutostartToggle(this)" disabled>
+                    <label class="form-check-label fw-semibold" for="autostart-switch">
+                        Start automatically when Windows starts
+                    </label>
+                </div>
+                <div class="form-text mb-4" id="autostart-note">Checking availability…</div>
+
+                <hr class="my-3">
+
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <div class="fw-semibold d-flex align-items-center gap-2">
+                            <i class="bi bi-arrow-repeat text-primary"></i> Application updates
+                        </div>
+                        <div class="form-text mb-0" id="update-status-text">
+                            Current version: {{ app_version }}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+                            id="update-check-btn" onclick="checkForUpdates()">
+                            <i class="bi bi-search"></i> Check for Updates
+                        </button>
+                        <button type="button" class="btn btn-success btn-sm d-none d-flex align-items-center gap-1"
+                            id="update-install-btn" onclick="installUpdate()">
+                            <i class="bi bi-download"></i> Install &amp; Restart
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-2 d-none" id="update-notes-wrap">
+                    <div class="form-text mb-1">Release notes:</div>
+                    <pre class="p-2 rounded-2 mb-0"
+                        style="background: var(--bs-tertiary-bg); font-size: 0.75rem; max-height: 140px; overflow-y: auto; white-space: pre-wrap;"
+                        id="update-notes"></pre>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="col-lg-4">
@@ -163,6 +214,139 @@ function browseFile(type) {
             cmToast('Could not open file picker.', 'error');
         });
 }
+
+/* ── Autostart ── */
+function loadAutostart() {
+    fetch('/api/autostart')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            var sw = document.getElementById('autostart-switch');
+            var note = document.getElementById('autostart-note');
+            sw.checked = data.enabled;
+            if (data.supported) {
+                sw.disabled = false;
+                note.textContent = 'Launches the app in the background at sign-in. ' +
+                    'The same option is offered during installation.';
+            } else {
+                sw.disabled = true;
+                note.textContent = 'Available in the installed Windows application only.';
+            }
+        })
+        .catch(function () {
+            document.getElementById('autostart-note').textContent =
+                'Could not read autostart state.';
+        });
+}
+
+function onAutostartToggle(sw) {
+    sw.disabled = true;
+    fetch('/api/autostart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: sw.checked })
+    })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+            sw.disabled = false;
+            if (!res.ok) {
+                sw.checked = !sw.checked;
+                cmToast(res.d.detail || 'Could not change autostart.', 'error');
+            } else {
+                sw.checked = res.d.enabled;
+                cmToast(res.d.enabled ? 'Autostart enabled.' : 'Autostart disabled.', 'success');
+            }
+        })
+        .catch(function () {
+            sw.disabled = false;
+            sw.checked = !sw.checked;
+            cmToast('Could not change autostart.', 'error');
+        });
+}
+
+/* ── Updates ── */
+function renderUpdateState(s) {
+    var text = document.getElementById('update-status-text');
+    var installBtn = document.getElementById('update-install-btn');
+    var notesWrap = document.getElementById('update-notes-wrap');
+    var current = 'Current version: ' + s.current_version;
+
+    installBtn.classList.add('d-none');
+    notesWrap.classList.add('d-none');
+
+    if (s.status === 'update_available') {
+        text.textContent = current + ' — version ' + s.latest_version + ' is available!';
+        installBtn.classList.remove('d-none');
+        if (s.notes) {
+            document.getElementById('update-notes').textContent = s.notes;
+            notesWrap.classList.remove('d-none');
+        }
+    } else if (s.status === 'up_to_date') {
+        text.textContent = current + ' — you are up to date.';
+    } else if (s.status === 'checking') {
+        text.textContent = current + ' — checking…';
+    } else if (s.status === 'downloading') {
+        text.textContent = current + ' — downloading update…';
+    } else if (s.status === 'installing') {
+        text.textContent = current + ' — installing; the app will restart.';
+    } else if (s.status === 'error') {
+        text.textContent = current + ' — ' + (s.error || 'update check failed.');
+    } else {
+        text.textContent = current;
+    }
+}
+
+function checkForUpdates() {
+    var btn = document.getElementById('update-check-btn');
+    btn.disabled = true;
+    fetch('/api/update/check', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (s) { btn.disabled = false; renderUpdateState(s); })
+        .catch(function () {
+            btn.disabled = false;
+            cmToast('Update check failed.', 'error');
+        });
+}
+
+function installUpdate() {
+    var btn = document.getElementById('update-install-btn');
+    btn.disabled = true;
+    fetch('/api/update/install', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (s) {
+            renderUpdateState(s);
+            if (s.status !== 'error') {
+                cmToast('Downloading update — the app will restart shortly.', 'warning');
+                // Poll until the server goes away, then wait for it to return
+                var timer = setInterval(function () {
+                    fetch('/api/update/status')
+                        .then(function (r) { return r.json(); })
+                        .then(renderUpdateState)
+                        .catch(function () {
+                            clearInterval(timer);
+                            document.getElementById('update-status-text').textContent =
+                                'Restarting… this page will reload automatically.';
+                            var retry = setInterval(function () {
+                                fetch('/api/version')
+                                    .then(function () { clearInterval(retry); location.reload(); })
+                                    .catch(function () {});
+                            }, 3000);
+                        });
+                }, 1500);
+            } else {
+                btn.disabled = false;
+                cmToast(s.error || 'Update failed.', 'error');
+            }
+        })
+        .catch(function () { /* server likely exited to install */ });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    loadAutostart();
+    fetch('/api/update/status')
+        .then(function (r) { return r.json(); })
+        .then(renderUpdateState)
+        .catch(function () {});
+});
 
 function onPathsSaved(evt) {
     var xhr = evt.detail.xhr;

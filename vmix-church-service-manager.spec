@@ -8,6 +8,7 @@ a = Analysis(
     datas=[('src/vmix-church-service-manager/templates', 'templates')],
     hiddenimports=[
         'config_file',
+        'paths',
         'routes.dashboard',
         'routes.hymns',
         'routes.programs',
@@ -19,6 +20,8 @@ a = Analysis(
         'services.program_service',
         'services.pptx_service',
         'services.monitoring',
+        'services.updater',
+        'services.autostart',
     ],
     hookspath=[],
     hooksconfig={},
@@ -39,7 +42,9 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    # Windowed: the installed app runs in the background (autostart-friendly);
+    # server logs go to %LOCALAPPDATA%\vMix Church Service Manager\logs
+    console=False,
     icon='app.ico',
     disable_windowed_traceback=False,
     argv_emulation=False,

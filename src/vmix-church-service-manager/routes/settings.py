@@ -1,15 +1,16 @@
-"""Application settings — custom paths for database and templates folder."""
+"""Application settings — storage paths, autostart, and updates."""
 
 import os
 import sqlite3
 import threading
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Body, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from config import settings
 from config_file import config_path, set_config
 from database import get_schema_version, init_db_at
+from services import autostart, updater
 
 router = APIRouter()
 
@@ -80,6 +81,48 @@ def pick_upload_dir():
     """Open native folder dialog to pick templates folder."""
     path = _pick_path("folder", "Choose Templates Folder")
     return JSONResponse({"path": path})
+
+
+# ---------------------------------------------------------------------------
+# Autostart (start on Windows boot)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/autostart")
+def get_autostart():
+    return JSONResponse({
+        "supported": autostart.is_supported(),
+        "enabled": autostart.is_enabled(),
+    })
+
+
+@router.post("/api/autostart")
+def set_autostart(data: dict = Body(...)):
+    try:
+        enabled = autostart.set_enabled(bool(data.get("enabled")))
+    except RuntimeError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+    return JSONResponse({"supported": True, "enabled": enabled})
+
+
+# ---------------------------------------------------------------------------
+# Updates
+# ---------------------------------------------------------------------------
+
+@router.get("/api/update/status")
+def update_status():
+    return JSONResponse(updater.get_state())
+
+
+@router.post("/api/update/check")
+def update_check():
+    return JSONResponse(updater.check_for_update())
+
+
+@router.post("/api/update/install")
+def update_install():
+    state = updater.install_update()
+    code = 400 if state["status"] == "error" else 200
+    return JSONResponse(state, status_code=code)
 
 
 # /docs is taken by FastAPI's built-in Swagger UI

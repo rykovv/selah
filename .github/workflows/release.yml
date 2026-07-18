@@ -1,5 +1,13 @@
 name: Build & Release
 
+# Trigger: push a tag like v1.2.0. The tag must match APP_VERSION in
+# config.py (guarded below) so the in-app auto-updater's version
+# comparison works against the release tag.
+#
+# Every release ships:
+#   - vmix-church-service-manager-setup-<version>.exe   (install + silent update)
+#   - vmix-church-service-manager-<version>-portable.zip (no-install fallback)
+
 on:
   push:
     tags:
@@ -20,23 +28,40 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Build with PyInstaller
-        run: pyinstaller vmix-church-service-manager.spec
-
       - name: Extract version from tag
         id: version
         shell: bash
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Create zip archive
+      - name: Verify tag matches APP_VERSION
         shell: pwsh
-        run: Compress-Archive -Path dist/vmix-church-service-manager/* -DestinationPath vmix-church-service-manager-${{ steps.version.outputs.VERSION }}.zip
+        run: |
+          $config = Get-Content "src/vmix-church-service-manager/config.py" -Raw
+          if ($config -notmatch 'APP_VERSION:\s*str\s*=\s*"([^"]+)"') { throw "APP_VERSION not found" }
+          $ver = $Matches[1]
+          $tag = "${{ steps.version.outputs.VERSION }}"
+          if ($ver -ne $tag) { throw "Tag v$tag does not match APP_VERSION $ver in config.py" }
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build with PyInstaller
+        run: pyinstaller --noconfirm --clean vmix-church-service-manager.spec
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            "/DMyAppVersion=${{ steps.version.outputs.VERSION }}" installer\setup.iss
+
+      - name: Create portable zip archive
+        shell: pwsh
+        run: Compress-Archive -Path dist/vmix-church-service-manager/* -DestinationPath dist/installer/vmix-church-service-manager-${{ steps.version.outputs.VERSION }}-portable.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: vmix-church-service-manager-${{ steps.version.outputs.VERSION }}.zip
+          files: |
+            dist/installer/vmix-church-service-manager-setup-${{ steps.version.outputs.VERSION }}.exe
+            dist/installer/vmix-church-service-manager-${{ steps.version.outputs.VERSION }}-portable.zip
