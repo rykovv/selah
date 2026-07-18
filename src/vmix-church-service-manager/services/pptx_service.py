@@ -33,6 +33,16 @@ def _is_hymn_number(value: Optional[str]) -> bool:
     return bool(value and value.strip().isdigit())
 
 
+def pattern_column_key(column_name: str) -> str:
+    """Sanitize a data table column name into a placeholder segment.
+
+    "Event Name" -> "event_name", so the tag becomes {{pattern_event_name_N}}.
+    Mirrored in JS in data_table_editor.html — keep the two in sync.
+    """
+    key = re.sub(r"[^a-z0-9]+", "_", (column_name or "").lower())
+    return key.strip("_")
+
+
 class PptxConfig:
     """Font / size settings for PPTX generation."""
 
@@ -390,11 +400,24 @@ def generate_program_pptx(
                 .order_by(DataTableRowModel.sequence, DataTableRowModel.id)
                 .all()
             )
+            try:
+                columns = json.loads(dtp.table.columns_json) if dtp.table else []
+            except (ValueError, TypeError):
+                columns = []
             for idx, row in enumerate(rows, start=1):
                 data = json.loads(row.data_json)
+                # Shorthand: {{pattern_N}} -> the configured value column
                 value = data.get(dtp.column_name, "")
                 tag = "{{" + dtp.pattern_name + "_" + str(idx) + "}}"
                 dt_replacements[tag] = str(value)
+                # Full form: {{pattern_column_N}} -> any column of row N
+                for col in columns:
+                    key = pattern_column_key(col)
+                    if not key:
+                        continue
+                    col_tag = ("{{" + dtp.pattern_name + "_" + key + "_"
+                               + str(idx) + "}}")
+                    dt_replacements[col_tag] = str(data.get(col, ""))
 
         if dt_replacements:
             for slide in prs.slides:

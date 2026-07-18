@@ -161,7 +161,11 @@
                 {% for p in active_patterns %}
                 <tr>
                     <td><code>{{ '{{' }}{{ p.pattern_name }}_1{{ '}}' }}</code>, <code>{{ '{{' }}{{ p.pattern_name }}_2{{ '}}' }}</code>, ...</td>
-                    <td>Data table <strong>{{ p.table.name }}</strong> — column <em>{{ p.column_name }}</em>, one per row</td>
+                    <td>Data table <strong>{{ p.table.name }}</strong> — value column <em>{{ p.column_name }}</em>, one per row</td>
+                </tr>
+                <tr>
+                    <td><code>{{ '{{' }}{{ p.pattern_name }}_&lt;column&gt;_1{{ '}}' }}</code>, <code>{{ '{{' }}{{ p.pattern_name }}_&lt;column&gt;_2{{ '}}' }}</code>, ...</td>
+                    <td>Any column of <strong>{{ p.table.name }}</strong> — write the column name in lowercase with underscores (e.g. "Event Name" → <code>event_name</code>)</td>
                 </tr>
                 {% endfor %}
                 {% else %}
@@ -334,9 +338,14 @@
         }
 
         var m = tag.match(/^([a-z][a-z0-9_]*)_\d+$/);
-        if (m && _reservedPatterns.indexOf(m[1]) !== -1) {
-            evt.preventDefault();
-            cmToast('Tag "' + tag + '" conflicts with data table pattern "' + m[1] + '". Use a different tag name.', 'error');
+        if (m) {
+            var hit = _reservedPatterns.find(function (p) {
+                return m[1] === p || m[1].indexOf(p + '_') === 0;
+            });
+            if (hit) {
+                evt.preventDefault();
+                cmToast('Tag "' + tag + '" conflicts with data table pattern "' + hit + '". Use a different tag name.', 'error');
+            }
         }
     });
 </script>

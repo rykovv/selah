@@ -497,7 +497,8 @@
                 <thead><tr><th>Placeholder</th><th>Replaced with</th></tr></thead>
                 <tbody>
                     <tr><td><code>{{tag}}</code></td><td>The <em>Person / Description</em> of the program item whose PPT Tag is <code>tag</code>.</td></tr>
-                    <tr><td><code>{{name_1}}</code>, <code>{{name_2}}</code>, …</td><td>Values from the data table whose pattern is <code>name</code> — one per row, in row order.</td></tr>
+                    <tr><td><code>{{name_1}}</code>, <code>{{name_2}}</code>, …</td><td>The <em>value column</em> of the data table whose pattern is <code>name</code> — one per row, in row order.</td></tr>
+                    <tr><td><code>{{name_column_1}}</code>, <code>{{name_column_2}}</code>, …</td><td>Any column of that table: write the column name in lowercase with underscores (column "Event Name" → <code>{{name_event_name_1}}</code>).</td></tr>
                     <tr><td><code>{{hymn_1}}</code>, <code>{{hymn_2}}</code>, …</td><td>The whole slide is <em>exploded</em> into a hymn title slide plus one slide per lyrics block, using the Nth hymn of the service plan.</td></tr>
                 </tbody>
             </table>
@@ -788,10 +789,16 @@ Praise God, praise God</div>
             <ul>
                 <li>Open <strong>PPT Pattern</strong> in the table editor, enable the toggle, choose a
                     <strong>pattern name</strong> and the <strong>value column</strong>.</li>
+                <li>Two tag forms work in templates: the short form <code>{{name_N}}</code> prints the
+                    value column of row N, and the full form <code>{{name_column_N}}</code> prints any
+                    column of row N — write the column name in lowercase with underscores
+                    (column "Event Name" → <code>{{schedule_event_name_1}}</code>). The pattern dialog
+                    previews the exact tags for your columns.</li>
                 <li>Pattern names must be lowercase (<code>a–z</code>, digits, underscores, starting with a
                     letter), unique across tables, and may not start with <code>hymn</code> (reserved).</li>
                 <li>When enabled, an <strong>ON</strong> badge shows on the button, and program item tags
-                    that would collide with the pattern (like <code>schedule_1</code>) are rejected.</li>
+                    that would collide with the pattern (like <code>schedule_1</code> or
+                    <code>schedule_time_1</code>) are rejected.</li>
             </ul>
         </div>
 

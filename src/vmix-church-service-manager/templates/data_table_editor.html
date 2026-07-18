@@ -191,7 +191,8 @@
             <div class="modal-body">
                 <p class="text-secondary" style="font-size: 0.82rem;">
                     When enabled, this table's data is injected into service PowerPoint templates.
-                    The system scans the PPT for pattern tags and replaces them with values from the selected column.
+                    <code>{{ '{{' }}name_N{{ '}}' }}</code> prints the <em>value column</em> of row N;
+                    <code>{{ '{{' }}name_column_N{{ '}}' }}</code> prints <em>any</em> column of row N.
                 </p>
 
                 <div class="form-check form-switch mb-3">
@@ -230,7 +231,9 @@
                         {% endfor %}
                     </select>
                     <div class="form-text">
-                        The column whose values will replace the pattern tags in the PPT template.
+                        The column used by the short <code>{{ '{{' }}name_N{{ '}}' }}</code> tags.
+                        All columns are always available via
+                        <code>{{ '{{' }}name_column_N{{ '}}' }}</code>.
                     </div>
                 </div>
 
@@ -327,14 +330,28 @@
 
     /* ── Pattern modal ── */
     var patternNameInput = document.getElementById('patternName');
+    var patternColumns = {{ columns | tojson }};
+
+    // Mirrors pattern_column_key() in services/pptx_service.py
+    function patternColumnKey(col) {
+        return (col || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+    }
 
     function updatePatternPreview() {
         var name = (patternNameInput.value || '').trim().toLowerCase();
         var el = document.getElementById('patternPreviewText');
         if (name) {
-            el.innerHTML =
-                'In your PPT template, use: <code>&#123;&#123;' + name + '_1&#125;&#125;</code>, ' +
+            var html =
+                'Value column: <code>&#123;&#123;' + name + '_1&#125;&#125;</code>, ' +
                 '<code>&#123;&#123;' + name + '_2&#125;&#125;</code>, ... (one per row)';
+            var colTags = patternColumns.map(function (c) {
+                return '<code>&#123;&#123;' + name + '_' + patternColumnKey(c) + '_1&#125;&#125;</code>';
+            });
+            if (colTags.length) {
+                html += '<br>Any column: ' + colTags.join(', ') + ', ...';
+            }
+            el.innerHTML = html;
         } else {
             el.textContent = 'Configure a pattern name to see a preview.';
         }

@@ -228,23 +228,27 @@ def update_item(
             "Use a different tag name.",
             status_code=400,
         )
-    # Check conflict with enabled data table patterns (e.g. tag "schedule_1"
-    # would clash with a data table pattern named "schedule")
+    # Check conflict with enabled data table patterns: both "schedule_1"
+    # (value column) and "schedule_time_1" (per-column) forms are generated
     if tag:
         m = re.fullmatch(r"([a-z][a-z0-9_]*)_\d+", tag)
         if m:
-            conflict = (
-                db.query(DataTablePatternModel)
-                .filter(
-                    DataTablePatternModel.pattern_name == m.group(1),
-                    DataTablePatternModel.is_enabled == True,
-                )
-                .first()
+            stem = m.group(1)
+            enabled_names = [
+                row.pattern_name
+                for row in db.query(DataTablePatternModel)
+                .filter(DataTablePatternModel.is_enabled == True)
+                .all()
+            ]
+            conflict = next(
+                (n for n in enabled_names
+                 if stem == n or stem.startswith(n + "_")),
+                None,
             )
             if conflict:
                 return Response(
                     f'Tag "{tag}" conflicts with data table pattern '
-                    f'"{m.group(1)}". Use a different tag name.',
+                    f'"{conflict}". Use a different tag name.',
                     status_code=400,
                 )
     item.title = title
