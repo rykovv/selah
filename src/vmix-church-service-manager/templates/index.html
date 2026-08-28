@@ -133,7 +133,7 @@
                     </span>
                     <button type="button"
                         class="btn btn-sm btn-primary d-flex align-items-center gap-1"
-                        data-bs-toggle="modal" data-bs-target="#hymnSettingsModal"
+                        data-bs-toggle="modal" data-bs-target="#pptSettingsModal"
                         title="Generate Hymns PPT">
                         <i class="bi bi-download"></i>
                         <span class="d-none d-sm-inline">Hymns PPT</span>
@@ -259,75 +259,8 @@
     </div>
 </div>
 
-<!-- ── Hymns PPT Settings Modal ── -->
-<div class="modal fade" id="hymnSettingsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="cm-chip cm-chip-indigo"><i class="bi bi-file-earmark-slides"></i></span>
-                    <h5 class="modal-title fw-semibold mb-0">Hymns PPT</h5>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-
-            <form action="/download/ppt" method="get" target="_blank">
-                <div class="modal-body d-flex flex-column gap-3">
-                    <div>
-                        <label class="form-label fw-semibold small">Aspect Ratio</label>
-                        <div class="d-flex gap-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="aspect"
-                                    id="aspect43dash" value="4:3" checked>
-                                <label class="form-check-label" for="aspect43dash">Standard (4:3)</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="aspect"
-                                    id="aspect169dash" value="16:9">
-                                <label class="form-check-label" for="aspect169dash">Widescreen (16:9)</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="form-label fw-semibold small">Font Family</label>
-                        <select class="form-select" name="font_select"
-                            onchange="toggleManualFont(this, 'hymnManual')">
-                            <option value="Arial" selected>Arial (Universal)</option>
-                            <option value="Calibri">Calibri (Modern)</option>
-                            <option value="Times New Roman">Times New Roman (Classic)</option>
-                            <option value="Verdana">Verdana (Wide)</option>
-                            <option value="Tahoma">Tahoma</option>
-                            <option value="Century Gothic">Century Gothic</option>
-                            <option value="Manual">Manual input…</option>
-                        </select>
-                        <input type="text" class="form-control mt-2 d-none" name="font_manual" id="hymnManual"
-                            placeholder="Font name…">
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Title Size (pt)</label>
-                            <input type="number" class="form-control" name="title_size" value="80" min="20" max="200">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Lyrics Size (pt)</label>
-                            <input type="number" class="form-control" name="lyrics_size" value="60" min="20" max="200">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm d-flex align-items-center gap-2"
-                        onclick="bootstrap.Modal.getInstance(document.getElementById('hymnSettingsModal')).hide();">
-                        <i class="bi bi-download"></i> Download
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<!-- ── Hymns PPT Settings Modal (shared partial with live preview) ── -->
+{% include "partials/hymns_ppt_modal.html" %}
 
 <!-- ── Hymn Preview Modal ── -->
 <div class="modal fade" id="dashboardPreviewModal" tabindex="-1" aria-hidden="true">
