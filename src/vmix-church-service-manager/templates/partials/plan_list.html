@@ -1,0 +1,52 @@
+{# Service plan list. Included on page load and returned by the /plan/add and
+   /plan/{id} (delete) routes so the whole panel refreshes in one swap.
+   When rendered as an HTMX response (oob=True), the count badge in the card
+   header is updated out-of-band. #}
+{% if plan %}
+<div id="service-list">
+    {% for item in plan %}
+    <div id="plan-row-{{ item.id }}" class="cm-plan-row" data-id="{{ item.id }}">
+        <span class="cm-drag-handle" title="Drag to reorder"
+            style="cursor: grab; color: var(--bs-secondary-color); opacity: 0.35; transition: opacity 0.15s; display: flex; align-items: center;">
+            <i class="bi bi-grip-vertical"></i>
+        </span>
+        <span class="cm-plan-seq">{{ loop.index }}</span>
+        <span class="cm-hymn-num" style="min-width: 2.25rem;">{{ item.hymn.number }}</span>
+        <span class="fw-semibold flex-grow-1 min-w-0 cm-title-wrap"
+            style="font-size: 0.9rem; color: var(--bs-body-color);">
+            {{ item.hymn.title }}
+        </span>
+        <button class="btn btn-sm border-0 p-1 d-flex align-items-center cm-preview-btn"
+            style="color: var(--bs-secondary-color);"
+            title="Preview"
+            hx-get="/hymns/{{ item.hymn.id }}/preview"
+            hx-target="#preview-content"
+            data-bs-toggle="modal"
+            data-bs-target="#previewModal">
+            <i class="bi bi-eye"></i>
+        </button>
+        <button class="btn btn-sm border-0 p-1 d-flex align-items-center"
+            style="color: var(--bs-danger-text-emphasis, #dc2626); opacity: 0.35; transition: opacity 0.15s;"
+            onmouseover="this.style.opacity=1"
+            onmouseout="this.style.opacity=0.35"
+            title="Remove"
+            hx-delete="/plan/{{ item.id }}"
+            hx-target="#plan-wrap"
+            hx-swap="innerHTML">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="cm-empty">
+    <i class="bi bi-collection cm-empty-icon"></i>
+    <p>No hymns yet.<br>Search and add from the library →</p>
+</div>
+{% endif %}
+
+{% if oob %}
+<span id="plan-count" class="text-secondary" style="font-size: 0.78rem;" hx-swap-oob="true">
+    {%- if plan %}{{ plan|length }} hymn{{ 's' if plan|length != 1 else '' }}{% endif -%}
+</span>
+{% endif %}

@@ -15,11 +15,9 @@
                     Service Hymns
                 </h5>
                 <div class="d-flex align-items-center gap-2">
-                    {% if plan %}
-                    <span class="text-secondary" style="font-size: 0.78rem;">
-                        {{ plan|length }} hymn{{ 's' if plan|length != 1 else '' }}
+                    <span id="plan-count" class="text-secondary" style="font-size: 0.78rem;">
+                        {%- if plan %}{{ plan|length }} hymn{{ 's' if plan|length != 1 else '' }}{% endif -%}
                     </span>
-                    {% endif %}
                     <button type="button"
                         class="btn btn-sm btn-success d-flex align-items-center gap-1"
                         data-bs-toggle="modal" data-bs-target="#pptSettingsModal"
@@ -31,48 +29,9 @@
             </div>
 
             <div class="flex-grow-1 overflow-auto">
-                {% if plan %}
-                <div id="service-list">
-                    {% for item in plan %}
-                    <div id="plan-row-{{ item.id }}" class="cm-plan-row" data-id="{{ item.id }}">
-                        <span class="cm-drag-handle" title="Drag to reorder"
-                            style="cursor: grab; color: var(--bs-secondary-color); opacity: 0.35; transition: opacity 0.15s; display: flex; align-items: center;">
-                            <i class="bi bi-grip-vertical"></i>
-                        </span>
-                        <span class="cm-plan-seq">{{ loop.index }}</span>
-                        <span class="cm-hymn-num" style="min-width: 2.25rem;">{{ item.hymn.number }}</span>
-                        <span class="fw-semibold flex-grow-1 min-w-0 cm-title-wrap"
-                            style="font-size: 0.9rem; color: var(--bs-body-color);">
-                            {{ item.hymn.title }}
-                        </span>
-                        <button class="btn btn-sm border-0 p-1 d-flex align-items-center cm-preview-btn"
-                            style="color: var(--bs-secondary-color);"
-                            title="Preview"
-                            hx-get="/hymns/{{ item.hymn.id }}/preview"
-                            hx-target="#preview-content"
-                            data-bs-toggle="modal"
-                            data-bs-target="#previewModal">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-sm border-0 p-1 d-flex align-items-center"
-                            style="color: var(--bs-danger-text-emphasis, #dc2626); opacity: 0.35; transition: opacity 0.15s;"
-                            onmouseover="this.style.opacity=1"
-                            onmouseout="this.style.opacity=0.35"
-                            title="Remove"
-                            hx-delete="/plan/{{ item.id }}"
-                            hx-target="#plan-row-{{ item.id }}"
-                            hx-swap="outerHTML">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    </div>
-                    {% endfor %}
+                <div id="plan-wrap">
+                    {% include "partials/plan_list.html" %}
                 </div>
-                {% else %}
-                <div class="cm-empty">
-                    <i class="bi bi-collection cm-empty-icon"></i>
-                    <p>No hymns yet.<br>Search and add from the library →</p>
-                </div>
-                {% endif %}
             </div>
 
         </div>
@@ -372,19 +331,27 @@
             .addEventListener('shown.bs.modal', updatePptPreview);
     })();
 
-    /* ── Drag-to-reorder service hymns ── */
-    (function () {
-        var list = document.getElementById('service-list');
-        if (!list) return;
+    /* ── Drag-to-reorder service hymns ──
+       The plan list is re-rendered by HTMX on every add/remove, so Sortable
+       must be (re)bound to the current #service-list element each time. */
+    var _planSortable = null;
 
-        Sortable.create(list, {
+    function initPlanSortable() {
+        if (_planSortable) {
+            _planSortable.destroy();
+            _planSortable = null;
+        }
+        var list = document.getElementById('service-list');
+        if (!list) return; // plan is empty — nothing to sort yet
+
+        _planSortable = Sortable.create(list, {
             handle: '.cm-drag-handle',
             animation: 180,
             ghostClass: 'cm-sortable-ghost',
             chosenClass: 'cm-sortable-chosen',
-            onEnd: function () {
+            onEnd: function (evt) {
                 /* Renumber the visible sequence badges */
-                var rows = list.querySelectorAll('.cm-plan-row');
+                var rows = evt.to.querySelectorAll('.cm-plan-row');
                 var order = [];
                 rows.forEach(function (row, i) {
                     row.querySelector('.cm-plan-seq').textContent = i + 1;
@@ -399,6 +366,13 @@
                 });
             }
         });
-    })();
+    }
+
+    initPlanSortable();
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target && evt.detail.target.id === 'plan-wrap') {
+            initPlanSortable();
+        }
+    });
 </script>
 {% endblock %}

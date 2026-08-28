@@ -25,8 +25,8 @@
         <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2"
             hx-post="/plan/add"
             hx-vals='{"hymn_id": "{{ hymn.id }}"}'
-            hx-target="body"
-            hx-push-url="false"
+            hx-target="#plan-wrap"
+            hx-swap="innerHTML"
             title="Add to service">
             <i class="bi bi-plus-lg"></i>
             <span class="d-none d-sm-inline">Add</span>

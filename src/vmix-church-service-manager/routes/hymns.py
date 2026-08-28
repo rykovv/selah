@@ -52,8 +52,24 @@ def page_hymns_manager(request: Request, db: Session = Depends(get_db)):
 # Service plan
 # ---------------------------------------------------------------------------
 
+def _plan_list_response(request: Request, db: Session):
+    """Render the plan list partial (with out-of-band count badge update)."""
+    plan = (
+        db.query(ServicePlanHymnModel)
+        .order_by(ServicePlanHymnModel.sequence)
+        .all()
+    )
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        "partials/plan_list.html",
+        {"request": request, "plan": plan, "oob": True},
+    )
+
+
 @router.post("/plan/add")
-def add_to_plan(hymn_id: int = Form(...), db: Session = Depends(get_db)):
+def add_to_plan(
+    request: Request, hymn_id: int = Form(...), db: Session = Depends(get_db)
+):
     hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
     if not hymn:
         return Response("Hymn not found", status_code=404)
@@ -65,11 +81,15 @@ def add_to_plan(hymn_id: int = Form(...), db: Session = Depends(get_db)):
     new_seq = (last_item.sequence + 1) if last_item else 1
     db.add(ServicePlanHymnModel(sequence=new_seq, hymn_id=hymn_id))
     db.commit()
+    if request.headers.get("HX-Request"):
+        return _plan_list_response(request, db)
     return RedirectResponse(url="/hymns", status_code=303)
 
 
 @router.delete("/plan/{item_id}")
-def remove_from_plan(item_id: int, db: Session = Depends(get_db)):
+def remove_from_plan(
+    item_id: int, request: Request, db: Session = Depends(get_db)
+):
     item = (
         db.query(ServicePlanHymnModel)
         .filter(ServicePlanHymnModel.id == item_id)
@@ -79,7 +99,7 @@ def remove_from_plan(item_id: int, db: Session = Depends(get_db)):
         db.delete(item)
         db.commit()
         _renumber_plan(db)
-    return HTMLResponse(content="")
+    return _plan_list_response(request, db)
 
 
 @router.put("/plan/reorder")
