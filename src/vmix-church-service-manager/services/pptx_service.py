@@ -29,8 +29,14 @@ def _parse_color(value: Optional[str], default: RGBColor) -> RGBColor:
 
 
 def _is_hymn_number(value: Optional[str]) -> bool:
-    """Return True if the value looks like a real hymn number (digits only)."""
-    return bool(value and value.strip().isdigit())
+    """Return True if the value is a real hymnal number.
+
+    Real numbers are digits-only and positive. Worship songs without a
+    hymnal number are stored with "0"/"00" placeholders or free text; those
+    must not produce a "Hymn #N" line on title slides.
+    """
+    v = (value or "").strip()
+    return v.isdigit() and int(v) > 0
 
 
 def pattern_column_key(column_name: str) -> str:
