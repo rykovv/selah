@@ -50,10 +50,18 @@ _TABLE_SQL = [
         "order" INTEGER,
         type VARCHAR DEFAULT 'VMIX'
     )""",
+    """CREATE TABLE IF NOT EXISTS hymn_sets (
+        id INTEGER PRIMARY KEY,
+        name VARCHAR,
+        is_active BOOLEAN DEFAULT 0,
+        last_used DATETIME
+    )""",
     """CREATE TABLE IF NOT EXISTS service_plan (
         id INTEGER PRIMARY KEY,
-        sequence INTEGER UNIQUE,
-        hymn_id INTEGER REFERENCES hymns(id)
+        set_id INTEGER REFERENCES hymn_sets(id),
+        sequence INTEGER,
+        hymn_id INTEGER REFERENCES hymns(id),
+        UNIQUE(set_id, sequence)
     )""",
     """CREATE TABLE IF NOT EXISTS programs (
         id INTEGER PRIMARY KEY,
@@ -151,10 +159,66 @@ def _migrate_1_1_0(conn: sqlite3.Connection):
     )""")
 
 
+def _migrate_1_4_0(conn: sqlite3.Connection):
+    """Multiple hymn sets: hymn_sets table + set_id on service_plan.
+
+    Guarded so it is safe on databases that already have the new schema
+    (e.g. freshly created by init_db_at at a newer version).
+    """
+    cursor = conn.cursor()
+    cursor.execute("""CREATE TABLE IF NOT EXISTS hymn_sets (
+        id INTEGER PRIMARY KEY,
+        name VARCHAR,
+        is_active BOOLEAN DEFAULT 0,
+        last_used DATETIME
+    )""")
+
+    # Ensure a default set exists
+    cursor.execute("SELECT id FROM hymn_sets ORDER BY id LIMIT 1")
+    row = cursor.fetchone()
+    if row:
+        default_id = row[0]
+    else:
+        cursor.execute(
+            "INSERT INTO hymn_sets (name, is_active, last_used) "
+            "VALUES ('Service Hymns', 1, datetime('now'))"
+        )
+        default_id = cursor.lastrowid
+
+    # Rebuild service_plan when it still has the single-set layout
+    # (UNIQUE(sequence) constraints cannot be altered in place in SQLite)
+    cursor.execute("PRAGMA table_info(service_plan)")
+    cols = [r[1] for r in cursor.fetchall()]
+    if "set_id" not in cols:
+        cursor.execute("""CREATE TABLE service_plan_new (
+            id INTEGER PRIMARY KEY,
+            set_id INTEGER REFERENCES hymn_sets(id),
+            sequence INTEGER,
+            hymn_id INTEGER REFERENCES hymns(id),
+            UNIQUE(set_id, sequence)
+        )""")
+        cursor.execute(
+            "INSERT INTO service_plan_new (id, set_id, sequence, hymn_id) "
+            "SELECT id, ?, sequence, hymn_id FROM service_plan",
+            (default_id,),
+        )
+        cursor.execute("DROP TABLE service_plan")
+        cursor.execute("ALTER TABLE service_plan_new RENAME TO service_plan")
+
+    # Exactly one active set: activate the first if none is active
+    cursor.execute("SELECT COUNT(*) FROM hymn_sets WHERE is_active = 1")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute(
+            "UPDATE hymn_sets SET is_active = 1 "
+            "WHERE id = (SELECT id FROM hymn_sets ORDER BY id LIMIT 1)"
+        )
+
+
 # Ordered list of migrations: (version, description, function)
 MIGRATIONS: List[Tuple[str, str, Callable]] = [
     ("1.0.0", "baseline schema", _migrate_1_0_0),
     ("1.1.0", "data table patterns", _migrate_1_1_0),
+    ("1.4.0", "multiple hymn sets", _migrate_1_4_0),
 ]
 
 

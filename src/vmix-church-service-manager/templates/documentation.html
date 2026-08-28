@@ -515,9 +515,26 @@
             <h4 class="mt-0"><span class="cm-chip cm-chip-indigo me-2"><i class="bi bi-music-note-list"></i></span>6. Hymns view</h4>
             <p>
                 The Hymns view (<code>/hymns</code>) is where you pick which hymns will be sung. The left
-                panel is today's <strong>service plan</strong>; the right panel is the full
+                panel shows one of your <strong>hymn sets</strong>; the right panel is the full
                 <strong>library</strong>.
             </p>
+
+            <h5>Hymn sets</h5>
+            <ul>
+                <li>You can keep <strong>multiple named hymn sets</strong> — e.g. one for Sabbath School
+                    and one for the Divine Service. Each set is a card in the left column, with the
+                    <strong>live set always on top</strong>; click a card to open it.</li>
+                <li>Exactly one set is <strong>live</strong> (green LIVE badge): that set is what the vMix
+                    feed, the Dashboard, and <code>{{hymn_N}}</code> program placeholders serve. The
+                    broadcast button on any other card makes it live — vMix updates on its next poll.</li>
+                <li>Every card carries its own actions: make live, <strong>duplicate</strong> (copies the
+                    set with all its hymns), and <strong>delete</strong> (with confirmation; deleting the
+                    live set makes another set live). The opened card additionally lets you rename the set
+                    in place (saves when you click away) and shows its hymn list for editing. The dashed
+                    <strong>New Hymn Set</strong> button at the bottom creates an empty set.</li>
+                <li>The <strong>Download PPT</strong> button always exports the set you are currently
+                    viewing, and the file is named after the set.</li>
+            </ul>
 
             <h5 class="doc-section" id="hymns-plan">Service hymns plan (left panel)</h5>
             <div class="doc-fig">
@@ -815,7 +832,8 @@ Praise God, praise God</div>
                 <tbody>
                     <tr>
                         <td><code>/api/hymns/service</code></td>
-                        <td>Every slide of every planned hymn, in order. Fields per row:
+                        <td>Every slide of every hymn in the <strong>live hymn set</strong>, in order.
+                            Fields per row:
                             <code>HymnNumber</code>, <code>Title</code>, <code>Label</code>,
                             <code>SlideText</code>. An all-empty spacer row separates hymns (useful as a
                             blank between songs).</td>

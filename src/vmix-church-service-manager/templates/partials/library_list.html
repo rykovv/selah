@@ -24,7 +24,7 @@
 
         <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2"
             hx-post="/plan/add"
-            hx-vals='{"hymn_id": "{{ hymn.id }}"}'
+            hx-vals='{"hymn_id": "{{ hymn.id }}"{% if current_set %}, "set_id": "{{ current_set.id }}"{% endif %}}'
             hx-target="#plan-wrap"
             hx-swap="innerHTML"
             title="Add to service">

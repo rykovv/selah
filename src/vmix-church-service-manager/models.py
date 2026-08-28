@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, ForeignKey,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -39,14 +40,32 @@ class SlideModel(Base):
     hymn = relationship("HymnModel", back_populates="slides")
 
 
-class ServicePlanHymnModel(Base):
-    __tablename__ = "service_plan"
+class HymnSetModel(Base):
+    __tablename__ = "hymn_sets"
 
     id = Column(Integer, primary_key=True, index=True)
-    sequence = Column(Integer, unique=True)
+    name = Column(String)
+    is_active = Column(Boolean, default=False)
+    last_used = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    items = relationship(
+        "ServicePlanHymnModel",
+        back_populates="set",
+        cascade="all, delete-orphan",
+    )
+
+
+class ServicePlanHymnModel(Base):
+    __tablename__ = "service_plan"
+    __table_args__ = (UniqueConstraint("set_id", "sequence"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    set_id = Column(Integer, ForeignKey("hymn_sets.id"))
+    sequence = Column(Integer)
     hymn_id = Column(Integer, ForeignKey("hymns.id"))
 
     hymn = relationship("HymnModel", back_populates="service_plans")
+    set = relationship("HymnSetModel", back_populates="items")
 
 
 class ServiceProgramModel(Base):

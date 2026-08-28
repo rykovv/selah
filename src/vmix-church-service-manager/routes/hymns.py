@@ -1,6 +1,7 @@
 """Hymn management, editor, search, plan, and PPT download routes."""
 
-from typing import List
+import re as _re
+from typing import List, Optional
 
 from fastapi import APIRouter, Body, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -9,7 +10,10 @@ from sqlalchemy import case, cast, Integer, or_
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import HymnModel, SlideModel, ServicePlanHymnModel
+from models import HymnModel, HymnSetModel, SlideModel, ServicePlanHymnModel
+from services.hymn_set_service import (
+    get_active_set, get_set_or_active, set_plan_query,
+)
 from services.pptx_service import PptxConfig, generate_hymn_plan_pptx
 from utils import get_slides_by_type
 
@@ -34,17 +38,23 @@ _hymn_order = (
 # ---------------------------------------------------------------------------
 
 @router.get("/hymns", response_class=HTMLResponse)
-def page_hymns_manager(request: Request, db: Session = Depends(get_db)):
-    plan = (
-        db.query(ServicePlanHymnModel)
-        .order_by(ServicePlanHymnModel.sequence)
-        .all()
-    )
+def page_hymns_manager(
+    request: Request, set: Optional[int] = None, db: Session = Depends(get_db)
+):
+    current_set = get_set_or_active(db, set)
+    sets = db.query(HymnSetModel).order_by(HymnSetModel.id).all()
+    plan = set_plan_query(db, current_set.id).all()
     library = db.query(HymnModel).order_by(*_hymn_order).all()
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "hymn_manager.html",
-        {"request": request, "plan": plan, "library": library},
+        {
+            "request": request,
+            "plan": plan,
+            "library": library,
+            "sets": sets,
+            "current_set": current_set,
+        },
     )
 
 
@@ -52,13 +62,9 @@ def page_hymns_manager(request: Request, db: Session = Depends(get_db)):
 # Service plan
 # ---------------------------------------------------------------------------
 
-def _plan_list_response(request: Request, db: Session):
+def _plan_list_response(request: Request, db: Session, set_id: int):
     """Render the plan list partial (with out-of-band count badge update)."""
-    plan = (
-        db.query(ServicePlanHymnModel)
-        .order_by(ServicePlanHymnModel.sequence)
-        .all()
-    )
+    plan = set_plan_query(db, set_id).all()
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "partials/plan_list.html",
@@ -68,22 +74,29 @@ def _plan_list_response(request: Request, db: Session):
 
 @router.post("/plan/add")
 def add_to_plan(
-    request: Request, hymn_id: int = Form(...), db: Session = Depends(get_db)
+    request: Request,
+    hymn_id: int = Form(...),
+    set_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
 ):
     hymn = db.query(HymnModel).filter(HymnModel.id == hymn_id).first()
     if not hymn:
         return Response("Hymn not found", status_code=404)
+    target_set = get_set_or_active(db, set_id)
     last_item = (
-        db.query(ServicePlanHymnModel)
+        set_plan_query(db, target_set.id)
+        .order_by(None)
         .order_by(ServicePlanHymnModel.sequence.desc())
         .first()
     )
     new_seq = (last_item.sequence + 1) if last_item else 1
-    db.add(ServicePlanHymnModel(sequence=new_seq, hymn_id=hymn_id))
+    db.add(ServicePlanHymnModel(
+        set_id=target_set.id, sequence=new_seq, hymn_id=hymn_id
+    ))
     db.commit()
     if request.headers.get("HX-Request"):
-        return _plan_list_response(request, db)
-    return RedirectResponse(url="/hymns", status_code=303)
+        return _plan_list_response(request, db, target_set.id)
+    return RedirectResponse(url=f"/hymns?set={target_set.id}", status_code=303)
 
 
 @router.delete("/plan/{item_id}")
@@ -95,11 +108,12 @@ def remove_from_plan(
         .filter(ServicePlanHymnModel.id == item_id)
         .first()
     )
+    set_id = item.set_id if item else get_active_set(db).id
     if item:
         db.delete(item)
         db.commit()
-        _renumber_plan(db)
-    return _plan_list_response(request, db)
+        _renumber_plan(db, set_id)
+    return _plan_list_response(request, db, set_id)
 
 
 @router.put("/plan/reorder")
@@ -126,15 +140,11 @@ def reorder_plan(order: List[int] = Body(...), db: Session = Depends(get_db)):
     return JSONResponse({"ok": True})
 
 
-def _renumber_plan(db: Session):
-    """Renumber service plan sequences to be contiguous (1, 2, 3, ...)."""
-    items = (
-        db.query(ServicePlanHymnModel)
-        .order_by(ServicePlanHymnModel.sequence)
-        .all()
-    )
+def _renumber_plan(db: Session, set_id: int):
+    """Renumber one set's sequences to be contiguous (1, 2, 3, ...)."""
+    items = set_plan_query(db, set_id).all()
     # Clear to negative temporaries first: updates are emitted in primary-key
-    # order, so direct reassignment can collide with the UNIQUE(sequence)
+    # order, so direct reassignment can collide with the UNIQUE(set, sequence)
     # constraint when row ids are not aligned with sequence order.
     for i, item in enumerate(items, start=1):
         item.sequence = -i
@@ -143,6 +153,73 @@ def _renumber_plan(db: Session):
     for i, item in enumerate(items, start=1):
         item.sequence = i
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Hymn sets
+# ---------------------------------------------------------------------------
+
+@router.post("/hymn-sets/new")
+def new_hymn_set(db: Session = Depends(get_db)):
+    new_set = HymnSetModel(name="New Hymn Set", is_active=False)
+    db.add(new_set)
+    db.commit()
+    db.refresh(new_set)
+    return RedirectResponse(f"/hymns?set={new_set.id}", status_code=303)
+
+
+@router.post("/hymn-sets/{set_id}/activate")
+def activate_hymn_set(set_id: int, db: Session = Depends(get_db)):
+    target = db.query(HymnSetModel).filter(HymnSetModel.id == set_id).first()
+    if not target:
+        return RedirectResponse("/hymns", status_code=303)
+    db.query(HymnSetModel).update({HymnSetModel.is_active: False})
+    target.is_active = True
+    from datetime import datetime, timezone
+    target.last_used = datetime.now(timezone.utc)
+    db.commit()
+    return RedirectResponse(f"/hymns?set={set_id}", status_code=303)
+
+
+@router.post("/hymn-sets/{set_id}/rename")
+def rename_hymn_set(
+    set_id: int, name: str = Form(""), db: Session = Depends(get_db)
+):
+    target = db.query(HymnSetModel).filter(HymnSetModel.id == set_id).first()
+    if not target:
+        return Response("Set not found", status_code=404)
+    name = name.strip()
+    if not name:
+        return Response("Set name cannot be empty.", status_code=400)
+    target.name = name
+    db.commit()
+    return Response(status_code=200)
+
+
+@router.post("/hymn-sets/{set_id}/clone")
+def clone_hymn_set(set_id: int, db: Session = Depends(get_db)):
+    source = db.query(HymnSetModel).filter(HymnSetModel.id == set_id).first()
+    if not source:
+        return RedirectResponse("/hymns", status_code=303)
+    copy = HymnSetModel(name=f"{source.name} (Copy)", is_active=False)
+    db.add(copy)
+    db.flush()
+    for item in set_plan_query(db, source.id).all():
+        db.add(ServicePlanHymnModel(
+            set_id=copy.id, sequence=item.sequence, hymn_id=item.hymn_id
+        ))
+    db.commit()
+    return RedirectResponse(f"/hymns?set={copy.id}", status_code=303)
+
+
+@router.post("/hymn-sets/{set_id}/delete")
+def delete_hymn_set(set_id: int, db: Session = Depends(get_db)):
+    target = db.query(HymnSetModel).filter(HymnSetModel.id == set_id).first()
+    if target:
+        db.delete(target)  # cascades to its plan rows
+        db.commit()
+        get_active_set(db)  # self-heal: ensure some set exists and is active
+    return RedirectResponse("/hymns", status_code=303)
 
 
 # ---------------------------------------------------------------------------
@@ -266,11 +343,18 @@ def _search_hymns(db: Session, q: str):
 
 
 @router.get("/library/search", response_class=HTMLResponse)
-def search_library(request: Request, q: str = "", db: Session = Depends(get_db)):
+def search_library(
+    request: Request,
+    q: str = "",
+    set: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
     hymns = _search_hymns(db, q)
+    current_set = get_set_or_active(db, set)
     templates = request.app.state.templates
     return templates.TemplateResponse(
-        "partials/library_list.html", {"request": request, "library": hymns}
+        "partials/library_list.html",
+        {"request": request, "library": hymns, "current_set": current_set},
     )
 
 
@@ -323,15 +407,13 @@ def download_ppt(
     lyrics_size: int = 60,
     bg_color: str = "#000000",
     text_color: str = "#FFFFFF",
+    set_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
-    plan = (
-        db.query(ServicePlanHymnModel)
-        .order_by(ServicePlanHymnModel.sequence)
-        .all()
-    )
+    target_set = get_set_or_active(db, set_id)
+    plan = set_plan_query(db, target_set.id).all()
     if not plan:
-        return Response("Service program is empty", status_code=400)
+        return Response("This hymn set is empty", status_code=400)
 
     cfg = PptxConfig(
         font_select=font_select,
@@ -348,7 +430,8 @@ def download_ppt(
 
     from datetime import datetime
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"Sabbath_Service_{aspect.replace(':', '')}_{ts}.pptx"
+    safe_name = _re.sub(r"[^A-Za-z0-9_-]+", "_", target_set.name or "").strip("_")
+    filename = f"{safe_name or 'Hymns'}_{aspect.replace(':', '')}_{ts}.pptx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(
         output,

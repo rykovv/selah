@@ -477,9 +477,13 @@ def generate_program_pptx(
                 lyrics_pt = inh_size
                 title_pt = int(round(inh_size * 1.2))
 
-        # 2. Fetch Content
+        # 2. Fetch Content (from the active hymn set)
+        from services.hymn_set_service import get_active_set
+
+        active_set = get_active_set(db)
         plan_item = db.query(ServicePlanHymnModel).filter(
-            ServicePlanHymnModel.sequence == hymn_seq
+            ServicePlanHymnModel.set_id == active_set.id,
+            ServicePlanHymnModel.sequence == hymn_seq,
         ).first()
         content_chunks = []
 

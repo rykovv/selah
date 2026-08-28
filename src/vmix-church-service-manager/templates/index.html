@@ -124,6 +124,12 @@
                         <i class="bi bi-music-note-list"></i>
                     </span>
                     Hymns
+                    {% if active_set %}
+                    <span class="text-secondary fw-normal" style="font-size: 0.78rem;"
+                        title="Active hymn set — served on the vMix feed">
+                        · {{ active_set.name }}
+                    </span>
+                    {% endif %}
                 </h5>
 
                 <div class="d-flex align-items-center gap-2">

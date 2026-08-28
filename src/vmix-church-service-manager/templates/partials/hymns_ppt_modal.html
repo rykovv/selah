@@ -13,6 +13,9 @@
             </div>
 
             <form action="/download/ppt" method="get" target="_blank">
+                {# On the Hymns view this pins the download to the set being
+                   viewed; on the Dashboard the route defaults to the active set. #}
+                {% if current_set %}<input type="hidden" name="set_id" value="{{ current_set.id }}">{% endif %}
                 <div class="modal-body d-flex flex-column gap-3">
 
                     <div>

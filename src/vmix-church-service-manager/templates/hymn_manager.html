@@ -3,38 +3,131 @@
 {% block content %}
 <div class="row g-4" style="height: calc(100vh - 5.5rem);">
 
-    <!-- ── Service Hymns (plan) ── -->
-    <div class="col-lg-5 d-flex flex-column" style="min-height: 0;">
-        <div class="cm-card d-flex flex-column h-100 overflow-hidden">
-
+    <!-- ── Hymn Sets (cards, live set first) ── -->
+    <div class="col-lg-5 d-flex flex-column gap-3" style="min-height: 0; overflow-y: auto;">
+        {% for s in sets | sort(attribute='is_active', reverse=true) %}
+        {% if s.id == current_set.id %}
+        <!-- Selected set: expanded card with its hymn list -->
+        <div class="cm-card d-flex flex-column overflow-hidden flex-shrink-0"
+            style="border: 1px solid var(--bs-primary); border-radius: 14px;">
             <div class="cm-card-header">
-                <h5 class="cm-title">
+                <h5 class="cm-title flex-grow-1 me-2">
                     <span class="cm-chip cm-chip-emerald">
                         <i class="bi bi-collection-play"></i>
                     </span>
-                    Service Hymns
+                    <input type="text" name="name"
+                        class="form-control form-control-sm border-0 bg-transparent shadow-none fw-semibold p-0"
+                        style="font-size: 0.95rem; min-width: 0;"
+                        value="{{ current_set.name }}"
+                        title="Rename this set (saves when you click away)"
+                        hx-post="/hymn-sets/{{ current_set.id }}/rename"
+                        hx-trigger="blur changed"
+                        hx-swap="none"
+                        hx-on::after-request="if (event.detail.successful) cmToast('Set renamed.', 'success');">
+                    {% if current_set.is_active %}
+                    <span class="badge rounded-pill flex-shrink-0"
+                        style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 0.65rem; letter-spacing: 0.05em;">
+                        ● LIVE
+                    </span>
+                    {% endif %}
                 </h5>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
                     <span id="plan-count" class="text-secondary" style="font-size: 0.78rem;">
                         {%- if plan %}{{ plan|length }} hymn{{ 's' if plan|length != 1 else '' }}{% endif -%}
                     </span>
                     <button type="button"
                         class="btn btn-sm btn-success d-flex align-items-center gap-1"
                         data-bs-toggle="modal" data-bs-target="#pptSettingsModal"
-                        title="Download Hymns PPT">
+                        title="Download this set as PPT">
                         <i class="bi bi-download"></i>
-                        <span class="d-none d-sm-inline">Download PPT</span>
+                        <span class="d-none d-sm-inline">PPT</span>
                     </button>
                 </div>
             </div>
 
-            <div class="flex-grow-1 overflow-auto">
-                <div id="plan-wrap">
-                    {% include "partials/plan_list.html" %}
+            <div class="d-flex align-items-center gap-1 px-3 py-2 border-bottom"
+                style="background: var(--bs-tertiary-bg);">
+                {% if not current_set.is_active %}
+                <form method="post" action="/hymn-sets/{{ current_set.id }}/activate" class="d-inline">
+                    <button class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                        title="Serve this set on the vMix feed and Dashboard">
+                        <i class="bi bi-broadcast"></i> Set Live
+                    </button>
+                </form>
+                {% endif %}
+                <div class="ms-auto d-flex align-items-center gap-1">
+                    <form method="post" action="/hymn-sets/{{ current_set.id }}/clone" class="d-inline">
+                        <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                            title="Duplicate this set with all its hymns">
+                            <i class="bi bi-copy"></i><span class="d-none d-md-inline">Duplicate</span>
+                        </button>
+                    </form>
+                    <form method="post" action="/hymn-sets/{{ current_set.id }}/delete" class="d-inline"
+                        onsubmit="return confirm('Delete hymn set &quot;{{ current_set.name }}&quot; and its hymn list? This cannot be undone.');">
+                        <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                            title="Delete this hymn set">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </form>
                 </div>
             </div>
 
+            <div id="plan-wrap">
+                {% include "partials/plan_list.html" %}
+            </div>
         </div>
+        {% else %}
+        <!-- Other set: compact card -->
+        <div class="cm-card p-3 d-flex align-items-center gap-2 flex-shrink-0 flex-row"
+            role="button" title="Open this hymn set"
+            onclick="window.location = '/hymns?set={{ s.id }}';">
+            <span class="cm-chip {{ 'cm-chip-emerald' if s.is_active else 'cm-chip-indigo' }}">
+                <i class="bi bi-collection-play"></i>
+            </span>
+            <span class="fw-semibold" style="font-size: 0.9rem;">{{ s.name }}</span>
+            {% if s.is_active %}
+            <span class="badge rounded-pill"
+                style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 0.65rem; letter-spacing: 0.05em;">
+                ● LIVE
+            </span>
+            {% endif %}
+            <span class="text-secondary" style="font-size: 0.78rem;">
+                {{ s.items|length }} hymn{{ 's' if s.items|length != 1 else '' }}
+            </span>
+            <div class="ms-auto d-flex align-items-center gap-1" onclick="event.stopPropagation();">
+                {% if not s.is_active %}
+                <form method="post" action="/hymn-sets/{{ s.id }}/activate" class="d-inline">
+                    <button class="btn btn-sm btn-outline-success border-0 p-1 d-flex align-items-center"
+                        title="Serve this set on the vMix feed and Dashboard">
+                        <i class="bi bi-broadcast"></i>
+                    </button>
+                </form>
+                {% endif %}
+                <form method="post" action="/hymn-sets/{{ s.id }}/clone" class="d-inline">
+                    <button class="btn btn-sm btn-outline-secondary border-0 p-1 d-flex align-items-center"
+                        title="Duplicate this set">
+                        <i class="bi bi-copy"></i>
+                    </button>
+                </form>
+                <form method="post" action="/hymn-sets/{{ s.id }}/delete" class="d-inline"
+                    onsubmit="return confirm('Delete hymn set &quot;{{ s.name }}&quot; and its hymn list? This cannot be undone.');">
+                    <button class="btn btn-sm btn-outline-danger border-0 p-1 d-flex align-items-center"
+                        title="Delete this hymn set">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <!-- New set -->
+        <form method="post" action="/hymn-sets/new" class="flex-shrink-0">
+            <button class="btn w-100 d-flex align-items-center justify-content-center gap-2 text-secondary"
+                style="border: 1.5px dashed var(--bs-border-color); border-radius: 14px; padding: 0.6rem; font-size: 0.85rem;">
+                <i class="bi bi-plus-lg"></i> New Hymn Set
+            </button>
+        </form>
     </div>
 
     <!-- ── Hymn Library ── -->
@@ -69,7 +162,7 @@
                         placeholder="Search by number, title, or lyrics…"
                         autocomplete="off"
                         autofocus
-                        hx-get="/library/search"
+                        hx-get="/library/search?set={{ current_set.id }}"
                         hx-trigger="keyup changed delay:250ms, search"
                         hx-target="#library-list">
                 </div>

@@ -13,6 +13,7 @@ from models import (
 )
 import json
 
+from services.hymn_set_service import get_active_set, set_plan_query
 from services.program_service import serialize_program_items
 from utils import get_slides_by_type
 
@@ -21,12 +22,9 @@ router = APIRouter()
 
 @router.get("/api/hymns/service", response_model=List[VmixRow])
 def get_vmix_feed(db: Session = Depends(get_db)):
-    """Flatten scheduled hymns into the row format vMix expects."""
-    service_items = (
-        db.query(ServicePlanHymnModel)
-        .order_by(ServicePlanHymnModel.sequence)
-        .all()
-    )
+    """Flatten the active hymn set into the row format vMix expects."""
+    active_set = get_active_set(db)
+    service_items = set_plan_query(db, active_set.id).all()
 
     vmix_output = []
     for item in service_items:

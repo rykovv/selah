@@ -24,6 +24,7 @@ a = Analysis(
         'services.autostart',
         'services.appcontrol',
         'services.logbuffer',
+        'services.hymn_set_service',
     ],
     hookspath=[],
     hooksconfig={},
