@@ -296,8 +296,7 @@ def preview_hymn(hymn_id: int, request: Request, db: Session = Depends(get_db)):
         return HTMLResponse("<div>Hymn not found</div>")
 
     vmix_slides = get_slides_by_type(hymn, preferred_type="VMIX")
-    ppt_slides = [s for s in hymn.slides if s.type == "PPT"]
-    ppt_slides.sort(key=lambda x: x.order)
+    ppt_slides = get_slides_by_type(hymn, preferred_type="PPT")
 
     templates = request.app.state.templates
     return templates.TemplateResponse(

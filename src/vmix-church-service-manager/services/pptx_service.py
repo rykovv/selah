@@ -491,10 +491,9 @@ def generate_program_pptx(
                 content_chunks.append(f"Hymn #{hymn.number}\n{hymn.title}")
             else:
                 content_chunks.append(hymn.title)
-            ppt_slides = [s for s in hymn.slides if s.type == "PPT"]
-            if ppt_slides:
-                for s in sorted(ppt_slides, key=lambda x: x.order):
-                    content_chunks.append(s.content)
+            # Prefer PPT slides, fall back to vMix content (and vice versa)
+            for s in get_slides_by_type(hymn, preferred_type="PPT"):
+                content_chunks.append(s.content)
 
         # 3. Apply Content
         insertion_index = i
