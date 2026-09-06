@@ -106,6 +106,7 @@
             <thead style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.055em;">
                 <tr>
                     <th style="width: 36px;" class="ps-3 border-bottom text-secondary"></th>
+                    <th style="width: 30px;" class="border-bottom text-secondary" title="Row number — reference cells with $row:Column">#</th>
                     <th style="width: 33%;" class="border-bottom text-secondary">Event Title</th>
                     <th style="width: 30%;" class="border-bottom text-secondary">Person / Description</th>
                     <th style="width: 24%;" class="border-bottom text-secondary">PPT Tag</th>
@@ -256,7 +257,17 @@
     </div>
 </div>
 
+<script src="/static/js/cellrefs.js"></script>
 <script>
+    /* Cell references in the items table: $row:Title / $row:Subtitle / $row:Tag */
+    var progRefs = initCellRefs({
+        containerId: 'items-container',
+        columns: ['Title', 'Subtitle', 'Tag'],
+        getField: function (tr, col) {
+            return tr.querySelector('[name="' + col.toLowerCase() + '"]');
+        }
+    });
+
     function toggleManualFont(select, inputId) {
         var el = document.getElementById(inputId);
         if (select.value === 'Manual') {
@@ -299,6 +310,7 @@
                         values: { item_ids: ids },
                         swap: 'none'
                     });
+                    if (progRefs) { progRefs.renumber(); progRefs.refreshAll(); }
                 }
             });
         }

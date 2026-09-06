@@ -5,35 +5,46 @@
         <i class="bi bi-grip-vertical text-secondary opacity-50"></i>
     </td>
 
+    <td class="dt-row-num text-secondary" style="width: 30px; vertical-align: middle; font-size: 0.75rem; font-weight: 600;"></td>
+
     <td style="width: 33%;" class="p-2">
-        <textarea
-            class="form-control border-0 bg-transparent fw-semibold shadow-none auto-expand p-1"
-            rows="1" name="title" placeholder="Event title…"
-            hx-post="/programs/item/{{ item.id }}/update"
-            hx-trigger="change"
-            hx-include="closest tr">{{ item.title or '' }}</textarea>
+        <div class="dt-cell position-relative">
+            <textarea
+                class="form-control border-0 bg-transparent fw-semibold shadow-none auto-expand p-1 dt-cell-input"
+                rows="1" name="title" placeholder="Event title…"
+                hx-post="/programs/item/{{ item.id }}/update"
+                hx-trigger="change"
+                hx-include="closest tr">{{ item.title or '' }}</textarea>
+            <div class="dt-cell-display d-none p-1 fw-semibold" tabindex="0"></div>
+        </div>
     </td>
 
     <td style="width: 30%;" class="p-2">
-        <textarea
-            class="form-control border-0 bg-transparent shadow-none auto-expand p-1 text-secondary"
-            rows="1" name="subtitle" placeholder="Person / description…"
-            hx-post="/programs/item/{{ item.id }}/update"
-            hx-trigger="change"
-            hx-include="closest tr">{{ item.subtitle or '' }}</textarea>
+        <div class="dt-cell position-relative">
+            <textarea
+                class="form-control border-0 bg-transparent shadow-none auto-expand p-1 text-secondary dt-cell-input"
+                rows="1" name="subtitle" placeholder="Person / description…"
+                hx-post="/programs/item/{{ item.id }}/update"
+                hx-trigger="change"
+                hx-include="closest tr">{{ item.subtitle or '' }}</textarea>
+            <div class="dt-cell-display d-none p-1 text-secondary" tabindex="0"></div>
+        </div>
     </td>
 
     <td style="width: 24%;" class="p-2">
         <div class="d-flex align-items-center gap-0">
             <span class="text-secondary font-monospace px-1" style="font-size: 0.75rem; opacity: 0.5; user-select: none;">{{ '{{' }}</span>
-            <input type="text"
-                class="form-control border-0 bg-transparent px-1 font-monospace text-primary fw-semibold shadow-none auto-expand"
-                name="tag" placeholder="tag"
-                style="font-size: 0.8rem; min-width: 0;"
-                value="{{ item.tag or '' }}"
-                hx-post="/programs/item/{{ item.id }}/update"
-                hx-trigger="change"
-                hx-include="closest tr">
+            <div class="dt-cell position-relative flex-grow-1">
+                <input type="text"
+                    class="form-control border-0 bg-transparent px-1 font-monospace text-primary fw-semibold shadow-none auto-expand dt-cell-input"
+                    name="tag" placeholder="tag"
+                    style="font-size: 0.8rem; min-width: 0;"
+                    value="{{ item.tag or '' }}"
+                    hx-post="/programs/item/{{ item.id }}/update"
+                    hx-trigger="change"
+                    hx-include="closest tr">
+                <div class="dt-cell-display d-none p-1 font-monospace" tabindex="0" style="font-size: 0.8rem;"></div>
+            </div>
             <span class="text-secondary font-monospace px-1" style="font-size: 0.75rem; opacity: 0.5; user-select: none;">{{ '}}' }}</span>
         </div>
     </td>

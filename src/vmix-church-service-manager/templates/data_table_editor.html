@@ -254,54 +254,7 @@
     </div>
 </div>
 
-<style>
-    /* ── Cell references ── */
-    .dt-hidden { display: none; }
-    .dt-cell-input.dt-ref-mode {
-        box-shadow: 0 0 0 2px var(--bs-primary) !important;
-        border-radius: 6px;
-        background: rgba(99, 102, 241, 0.06) !important;
-    }
-    .dt-cell-input.dt-ref-error {
-        box-shadow: 0 0 0 2px var(--bs-danger) !important;
-        border-radius: 6px;
-    }
-    .dt-cell-display {
-        /* Looks like a normal cell — the reference is revealed on hover/click */
-        white-space: pre-wrap;
-        word-break: break-word;
-        cursor: text;
-        min-height: 1.9rem;
-        font-size: 0.875rem;
-        border-radius: 4px;
-    }
-    .dt-cell-display.dt-empty {
-        color: var(--bs-secondary-color);
-        font-style: italic;
-        opacity: 0.7;
-    }
-    .dt-ac {
-        position: absolute;
-        z-index: 3000;
-        display: none;
-        background: var(--bs-body-bg);
-        border: 1px solid var(--bs-border-color);
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    }
-    .dt-ac-item {
-        display: block;
-        width: 100%;
-        text-align: left;
-        border: 0;
-        background: none;
-        padding: 0.35rem 0.75rem;
-        font-size: 0.82rem;
-        color: var(--bs-body-color);
-    }
-    .dt-ac-item:hover { background: var(--bs-tertiary-bg); }
-</style>
+<script src="/static/js/cellrefs.js"></script>
 
 <script>
     /* ── Feed URL ── */
@@ -337,8 +290,7 @@
                         values: { item_ids: ids },
                         swap: 'none'
                     });
-                    renumberRows();
-                    refreshAllDisplays();
+                    if (dtRefs) { dtRefs.renumber(); dtRefs.refreshAll(); }
                 }
             });
         }
@@ -358,178 +310,14 @@
     document.addEventListener('DOMContentLoaded', initAutoResize);
     document.body.addEventListener('htmx:afterSwap', initAutoResize);
 
-    /* ── Cell references: $<row>:<column> ─────────────────────────────────
-       The textarea ALWAYS holds the raw value (so saves post the reference,
-       not its resolution). When a reference cell is not being edited, the
-       textarea is hidden and a display div shows the resolved text. */
+    /* ── Cell references (shared module: /static/js/cellrefs.js) ── */
     var dtColumns = {{ columns | tojson }};
-    var REF_PREFIX_RE = /^\$\d+:/;
-    var REF_FULL_RE = /^\$(\d+):(.+)$/;
-
-    function dtRows() {
-        return Array.from(document.querySelectorAll('#rows-container > tr'));
-    }
-
-    function renumberRows() {
-        dtRows().forEach(function (tr, i) {
-            var td = tr.querySelector('.dt-row-num');
-            if (td) td.textContent = i + 1;
-        });
-    }
-
-    function escAttr(v) { return v.replace(/(["\\])/g, '\\$1'); }
-
-    function resolveRef(raw, seen) {
-        var m = REF_FULL_RE.exec((raw || '').trim());
-        if (!m) return { ok: true, text: raw };
-        var rowIdx = parseInt(m[1], 10) - 1;
-        var col = m[2];
-        var trs = dtRows();
-        if (rowIdx < 0 || rowIdx >= trs.length) {
-            return { ok: false, error: 'Row ' + m[1] + ' does not exist' };
+    var dtRefs = initCellRefs({
+        containerId: 'rows-container',
+        columns: dtColumns,
+        getField: function (tr, col) {
+            return tr.querySelector('textarea[name="col__' + col.replace(/(["\\])/g, '\\$1') + '"]');
         }
-        // Case-insensitive column match (mirrors the server-side resolver)
-        var actualCol = dtColumns.find(function (c) {
-            return c.toLowerCase() === col.trim().toLowerCase();
-        });
-        if (!actualCol) {
-            return { ok: false, error: 'Column "' + col + '" does not exist' };
-        }
-        var key = rowIdx + '::' + actualCol;
-        seen = seen || {};
-        if (seen[key]) return { ok: false, error: 'Circular reference' };
-        seen[key] = true;
-        var target = trs[rowIdx].querySelector('textarea[name="col__' + escAttr(actualCol) + '"]');
-        if (!target) return { ok: false, error: 'Column "' + col + '" does not exist' };
-        return resolveRef(target.value, seen);
-    }
-
-    function refreshCellDisplay(tx) {
-        var wrap = tx.closest('.dt-cell');
-        if (!wrap || document.activeElement === tx) return;
-        var disp = wrap.querySelector('.dt-cell-display');
-        tx.classList.remove('dt-ref-mode', 'dt-ref-error');
-        tx.removeAttribute('title');
-        if (!REF_PREFIX_RE.test((tx.value || '').trim())) {
-            disp.classList.add('d-none');
-            tx.classList.remove('dt-hidden');
-            return;
-        }
-        var res = resolveRef(tx.value);
-        if (res.ok) {
-            var empty = !(res.text || '').trim();
-            disp.textContent = empty ? '(empty — ' + tx.value.trim() + ')' : res.text;
-            disp.classList.toggle('dt-empty', empty);
-            disp.title = tx.value.trim() + ' — click to edit the reference';
-            disp.classList.remove('d-none');
-            tx.classList.add('dt-hidden');
-        } else {
-            disp.classList.add('d-none');
-            tx.classList.remove('dt-hidden');
-            tx.classList.add('dt-ref-error');
-            tx.title = res.error;
-        }
-    }
-
-    function refreshAllDisplays(except) {
-        document.querySelectorAll('#rows-container textarea.dt-cell-input')
-            .forEach(function (tx) { if (tx !== except) refreshCellDisplay(tx); });
-    }
-
-    /* Column-name autocomplete for reference mode */
-    var acBox = null;
-    function hideAc() { if (acBox) acBox.style.display = 'none'; }
-
-    function showAc(tx) {
-        var m = /^\$(\d+):(.*)$/.exec((tx.value || '').trim());
-        if (!m) { hideAc(); return; }
-        var typed = m[2].toLowerCase();
-        var matches = dtColumns.filter(function (c) {
-            return c.toLowerCase().indexOf(typed) === 0 && c !== m[2];
-        });
-        if (!matches.length) { hideAc(); return; }
-        if (!acBox) {
-            acBox = document.createElement('div');
-            acBox.className = 'dt-ac';
-            document.body.appendChild(acBox);
-        }
-        acBox.innerHTML = '';
-        matches.forEach(function (c) {
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'dt-ac-item';
-            b.textContent = c;
-            b.addEventListener('mousedown', function (e) {
-                e.preventDefault(); // keep focus in the textarea
-                tx.value = '$' + m[1] + ':' + c;
-                tx.dispatchEvent(new Event('input', { bubbles: true }));
-                hideAc();
-            });
-            acBox.appendChild(b);
-        });
-        var r = tx.getBoundingClientRect();
-        acBox.style.left = (window.scrollX + r.left) + 'px';
-        acBox.style.top = (window.scrollY + r.bottom + 2) + 'px';
-        acBox.style.minWidth = r.width + 'px';
-        acBox.style.display = 'block';
-    }
-
-    (function () {
-        var rowsC = document.getElementById('rows-container');
-        if (!rowsC) return;
-
-        rowsC.addEventListener('focusin', function (e) {
-            var tx = e.target.closest('textarea.dt-cell-input');
-            if (!tx) return;
-            tx.classList.remove('dt-ref-error');
-            tx.removeAttribute('title');
-            if (REF_PREFIX_RE.test((tx.value || '').trim())) {
-                tx.classList.add('dt-ref-mode');
-                showAc(tx);
-            }
-        });
-
-        rowsC.addEventListener('input', function (e) {
-            var tx = e.target.closest('textarea.dt-cell-input');
-            if (!tx) return;
-            var isRef = REF_PREFIX_RE.test((tx.value || '').trim());
-            tx.classList.toggle('dt-ref-mode', isRef);
-            if (isRef) showAc(tx); else hideAc();
-            refreshAllDisplays(tx); // live propagation to referencing cells
-        });
-
-        rowsC.addEventListener('focusout', function (e) {
-            var tx = e.target.closest('textarea.dt-cell-input');
-            if (!tx) return;
-            hideAc();
-            tx.classList.remove('dt-ref-mode');
-            setTimeout(function () {
-                refreshCellDisplay(tx);
-                refreshAllDisplays(tx);
-                if (tx.classList.contains('dt-ref-error')) {
-                    cmToast(tx.title + ': ' + tx.value.trim(), 'error');
-                }
-            }, 0);
-        });
-
-        /* Click a resolved display -> edit the raw reference */
-        rowsC.addEventListener('click', function (e) {
-            var disp = e.target.closest('.dt-cell-display');
-            if (!disp) return;
-            var tx = disp.closest('.dt-cell').querySelector('textarea');
-            disp.classList.add('d-none');
-            tx.classList.remove('dt-hidden');
-            tx.focus();
-        });
-    })();
-
-    document.addEventListener('DOMContentLoaded', function () {
-        renumberRows();
-        refreshAllDisplays();
-    });
-    document.body.addEventListener('htmx:afterSwap', function () {
-        renumberRows();
-        refreshAllDisplays();
     });
 
     /* ── Column editor (modal) ── */

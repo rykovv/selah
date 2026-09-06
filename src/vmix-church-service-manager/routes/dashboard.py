@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import ServiceProgramModel, ServicePlanHymnModel
 from services.hymn_set_service import get_active_set, set_plan_query
+from services.program_service import annotate_display_fields
 from utils import sort_program_items
 
 router = APIRouter()
@@ -41,6 +42,7 @@ def read_dashboard(request: Request, db: Session = Depends(get_db)):
     )
     if active_prog:
         active_prog.items = sort_program_items(active_prog.items)
+        annotate_display_fields(active_prog.items)
 
     active_set = get_active_set(db)
     plan = set_plan_query(db, active_set.id).all()

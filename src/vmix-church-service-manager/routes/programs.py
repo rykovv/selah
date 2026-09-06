@@ -19,6 +19,7 @@ from models import (
     ServiceProgramModel,
 )
 from services.pptx_service import PptxConfig, generate_program_pptx
+from services.program_service import annotate_display_fields
 from utils import sort_program_items
 
 router = APIRouter()
@@ -63,6 +64,7 @@ def page_programs(request: Request, db: Session = Depends(get_db)):
     )
     for prog in programs:
         prog.items = sort_program_items(prog.items)
+        annotate_display_fields(prog.items)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "programs.html", {"request": request, "programs": programs}

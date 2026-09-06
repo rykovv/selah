@@ -84,11 +84,11 @@
                             <div style="flex: 1 1 0px; min-width: 0; overflow: hidden;">
                                 <div class="fw-semibold"
                                     style="font-size: 0.9rem; line-height: 1.35; color: var(--bs-body-color); word-break: break-word;">
-                                    {{ item.title }}
+                                    {{ item.display_title | default(item.title, true) }}
                                 </div>
-                                {% if item.subtitle %}
+                                {% if item.display_subtitle | default(item.subtitle, true) %}
                                 <div class="text-secondary text-truncate" style="font-size: 0.8rem; margin-top: 1px;">
-                                    {{ item.subtitle }}
+                                    {{ item.display_subtitle | default(item.subtitle, true) }}
                                 </div>
                                 {% endif %}
                             </div>

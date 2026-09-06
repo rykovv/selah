@@ -371,10 +371,14 @@ def generate_program_pptx(
     prs = Presentation(template_path)
 
     # --- PHASE 1: STANDARD REPLACEMENTS ---
+    from services.program_service import resolve_program_item_rows
+    from utils import sort_program_items
+
+    items = sort_program_items(program.items)
     replacements = {}
-    for item in program.items:
-        if item.tag and item.subtitle:
-            replacements[item.tag] = item.subtitle
+    for row in resolve_program_item_rows(items):
+        if row["Tag"] and row["Subtitle"]:
+            replacements[row["Tag"]] = row["Subtitle"]
 
     search_replace_pairs = {("{{" + key + "}}"): str(value) for key, value in replacements.items()}
 
