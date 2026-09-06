@@ -5,7 +5,10 @@ a = Analysis(
     ['src\\vmix-church-service-manager\\app.py'],
     pathex=['src/vmix-church-service-manager'],
     binaries=[],
-    datas=[('src/vmix-church-service-manager/templates', 'templates')],
+    datas=[
+        ('src/vmix-church-service-manager/templates', 'templates'),
+        ('src/vmix-church-service-manager/static', 'static'),
+    ],
     hiddenimports=[
         'config_file',
         'paths',

@@ -114,6 +114,14 @@ def create_app() -> FastAPI:
     # Ensure upload directory exists
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
+    # Vendored static assets (Bootstrap, htmx, Sortable, Chart.js, Coloris)
+    # served locally: no CDN round-trips blocking render, works offline.
+    from fastapi.staticfiles import StaticFiles
+    app.mount(
+        "/static", StaticFiles(directory=settings.resolve_static_dir()),
+        name="static",
+    )
+
     # Setup Jinja2 templates on app state (accessible via request.app.state.templates)
     template_dir = settings.resolve_template_dir()
     templates = Jinja2Templates(directory=template_dir)

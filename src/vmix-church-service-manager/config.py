@@ -36,5 +36,16 @@ class Settings:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(base_dir, "templates")
 
+    @staticmethod
+    def resolve_static_dir() -> str:
+        """Resolve bundled static assets directory (vendored JS/CSS)."""
+        if getattr(sys, "frozen", False):
+            base_dir = os.path.dirname(sys.executable)
+            internal = os.path.join(base_dir, "_internal", "static")
+            root = os.path.join(base_dir, "static")
+            return internal if os.path.exists(internal) else root
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base_dir, "static")
+
 
 settings = Settings()
