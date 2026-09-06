@@ -5,7 +5,8 @@
 
     <!-- ── Hymn Sets (cards, live set first) ── -->
     <div class="col-lg-5 d-flex flex-column gap-3" style="min-height: 0; overflow-y: auto;">
-        {% for s in sets | sort(attribute='is_active', reverse=true) %}
+        {# Route orders sets: active first, then most recently used #}
+        {% for s in sets %}
         {% if s.id == current_set.id %}
         <!-- Selected set: expanded card with its hymn list -->
         <div class="cm-card d-flex flex-column overflow-hidden flex-shrink-0"

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import HymnModel, HymnSetModel, SlideModel, ServicePlanHymnModel
 from services.hymn_set_service import (
-    get_active_set, get_set_or_active, set_plan_query,
+    get_active_set, get_set_or_active, set_plan_query, touch_set,
 )
 from services.pptx_service import PptxConfig, generate_hymn_plan_pptx
 from utils import get_slides_by_type
@@ -45,7 +45,16 @@ def page_hymns_manager(
     db: Session = Depends(get_db),
 ):
     current_set = get_set_or_active(db, set)
-    sets = db.query(HymnSetModel).order_by(HymnSetModel.id).all()
+    # Card stacking order: active set first, then most recently used
+    sets = (
+        db.query(HymnSetModel)
+        .order_by(
+            HymnSetModel.is_active.desc(),
+            HymnSetModel.last_used.desc(),
+            HymnSetModel.id.desc(),
+        )
+        .all()
+    )
     plan = set_plan_query(db, current_set.id).all()
     library = db.query(HymnModel).order_by(*_hymn_order).all()
     templates = request.app.state.templates
@@ -97,6 +106,7 @@ def add_to_plan(
     db.add(ServicePlanHymnModel(
         set_id=target_set.id, sequence=new_seq, hymn_id=hymn_id
     ))
+    touch_set(db, target_set.id)
     db.commit()
     if request.headers.get("HX-Request"):
         return _plan_list_response(request, db, target_set.id)
@@ -115,6 +125,7 @@ def remove_from_plan(
     set_id = item.set_id if item else get_active_set(db).id
     if item:
         db.delete(item)
+        touch_set(db, set_id)
         db.commit()
         _renumber_plan(db, set_id)
     return _plan_list_response(request, db, set_id)
@@ -140,6 +151,8 @@ def reorder_plan(order: List[int] = Body(...), db: Session = Depends(get_db)):
     for i, item_id in enumerate(order):
         if item_id in lookup:
             lookup[item_id].sequence = i + 1
+    if items:
+        touch_set(db, items[0].set_id)
     db.commit()
     return JSONResponse({"ok": True})
 
@@ -198,6 +211,7 @@ def rename_hymn_set(
     if not name:
         return Response("Set name cannot be empty.", status_code=400)
     target.name = name
+    touch_set(db, set_id)
     db.commit()
     return Response(status_code=200)
 

@@ -1,5 +1,6 @@
 """Hymn set helpers shared by routes, PPT generation, and the vMix feed."""
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -7,6 +8,16 @@ from sqlalchemy.orm import Session
 from models import HymnSetModel, ServicePlanHymnModel
 
 DEFAULT_SET_NAME = "Service Hymns"
+
+
+def touch_set(db: Session, set_id: int):
+    """Mark a set as recently used (drives card ordering on the Hymns page).
+
+    Does not commit; callers commit as part of their own transaction.
+    """
+    db.query(HymnSetModel).filter(HymnSetModel.id == set_id).update(
+        {HymnSetModel.last_used: datetime.now(timezone.utc)}
+    )
 
 
 def get_active_set(db: Session) -> HymnSetModel:
