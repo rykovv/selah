@@ -15,7 +15,7 @@ import json
 
 from services.hymn_set_service import get_active_set, set_plan_query
 from services.program_service import serialize_program_items
-from utils import get_slides_by_type
+from utils import get_slides_by_type, resolve_table_references
 
 router = APIRouter()
 
@@ -91,7 +91,7 @@ def get_data_table_feed(slug: str, db: Session = Depends(get_db)):
         table.rows,
         key=lambda r: (r.sequence if r.sequence is not None else 9999, r.id),
     )
-    return [json.loads(r.data_json) for r in rows]
+    return resolve_table_references([json.loads(r.data_json) for r in rows])
 
 
 # ---------------------------------------------------------------------------

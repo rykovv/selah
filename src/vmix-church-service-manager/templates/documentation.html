@@ -781,6 +781,22 @@ Praise God, praise God</div>
                 <li>The bar under the title shows the table's feed URL
                     (<code>/api/feed/&lt;slug&gt;</code>) with a one-click <strong>Copy</strong> button.</li>
             </ul>
+            <h5>Cell references</h5>
+            <ul>
+                <li>A cell can mirror another cell: type <code>$&lt;row&gt;:&lt;column&gt;</code>, e.g.
+                    <code>$1:Speaker</code> for row 1's <em>Speaker</em> value (row numbers are shown in
+                    the <strong>#</strong> column).</li>
+                <li>While you type a reference the cell gets an indigo frame and a dropdown suggests
+                    matching column names — click one to complete it. When you click away, the cell shows
+                    the <em>referenced text</em> with a subtle indigo accent; click it again to edit the
+                    raw reference.</li>
+                <li>If the reference points to a missing row or column (or forms a loop), the cell is
+                    framed red with the error shown — and the feed keeps the raw text visible instead of
+                    silently dropping it.</li>
+                <li>Editing the referenced cell updates every cell that mirrors it instantly, and the
+                    vMix feed and PPT patterns always serve the resolved values. References follow row
+                    <em>position</em>, so reordering rows changes what <code>$1:…</code> points at.</li>
+            </ul>
             <h5>PPT patterns</h5>
             <div class="doc-fig">
                 <div class="row g-3 align-items-center">

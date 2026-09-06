@@ -29,6 +29,21 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    """Prevent heuristic browser caching of pages and API responses.
+
+    Without explicit Cache-Control, browsers may serve stale HTML for
+    previously visited URLs — after an app update that mixes old cached
+    pages with new fragments and JS. Static assets keep normal caching.
+    """
+
+    async def dispatch(self, request: StarletteRequest, call_next):
+        response = await call_next(request)
+        if not request.url.path.startswith("/static"):
+            response.headers.setdefault("Cache-Control", "no-store")
+        return response
+
+
 class SetupRedirectMiddleware(BaseHTTPMiddleware):
     """Redirect all pages to /settings until initial setup is complete."""
 
@@ -133,6 +148,7 @@ def create_app() -> FastAPI:
 
     # Track request rates for monitored API endpoints
     app.add_middleware(MonitoringMiddleware)
+    app.add_middleware(NoCacheMiddleware)
 
     # Redirect to settings page until setup is complete
     if settings.needs_setup:

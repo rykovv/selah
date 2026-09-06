@@ -14,7 +14,7 @@ from pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
 from pptx.dml.color import RGBColor
 
-from utils import clean_text, get_slides_by_type
+from utils import clean_text, get_slides_by_type, resolve_table_references
 
 BG_COLOR = RGBColor(0, 0, 0)
 TEXT_COLOR = RGBColor(255, 255, 255)
@@ -410,8 +410,10 @@ def generate_program_pptx(
                 columns = json.loads(dtp.table.columns_json) if dtp.table else []
             except (ValueError, TypeError):
                 columns = []
-            for idx, row in enumerate(rows, start=1):
-                data = json.loads(row.data_json)
+            resolved_rows = resolve_table_references(
+                [json.loads(r.data_json) for r in rows]
+            )
+            for idx, data in enumerate(resolved_rows, start=1):
                 # Shorthand: {{pattern_N}} -> the configured value column
                 value = data.get(dtp.column_name, "")
                 tag = "{{" + dtp.pattern_name + "_" + str(idx) + "}}"

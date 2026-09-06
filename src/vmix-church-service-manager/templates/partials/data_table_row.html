@@ -4,14 +4,19 @@
         <i class="bi bi-grip-vertical text-secondary opacity-50"></i>
     </td>
 
+    <td class="dt-row-num text-secondary" style="width: 30px; vertical-align: middle; font-size: 0.75rem; font-weight: 600;"></td>
+
     {% for col in columns %}
     <td class="p-2">
-        <textarea
-            class="form-control border-0 bg-transparent shadow-none auto-expand p-1"
-            rows="1" name="col__{{ col }}" placeholder="{{ col }}..."
-            hx-post="/data-tables/row/{{ row.id }}/update"
-            hx-trigger="change"
-            hx-include="closest tr">{{ data.get(col, '') }}</textarea>
+        <div class="dt-cell position-relative">
+            <textarea
+                class="form-control border-0 bg-transparent shadow-none auto-expand p-1 dt-cell-input"
+                rows="1" name="col__{{ col }}" placeholder="{{ col }}..."
+                hx-post="/data-tables/row/{{ row.id }}/update"
+                hx-trigger="change"
+                hx-include="closest tr">{{ data.get(col, '') }}</textarea>
+            <div class="dt-cell-display d-none p-1" tabindex="0"></div>
+        </div>
     </td>
     {% endfor %}
 
