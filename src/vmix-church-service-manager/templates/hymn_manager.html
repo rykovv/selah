@@ -15,7 +15,7 @@
                     <span class="cm-chip cm-chip-emerald">
                         <i class="bi bi-collection-play"></i>
                     </span>
-                    <input type="text" name="name"
+                    <input type="text" name="name" id="setNameInput"
                         class="form-control form-control-sm border-0 bg-transparent shadow-none fw-semibold p-0"
                         style="font-size: 0.95rem; min-width: 0;"
                         value="{{ current_set.name }}"
@@ -44,6 +44,14 @@
                     </button>
                 </div>
             </div>
+
+            {% if just_created %}
+            <div id="rename-hint" class="d-flex align-items-center gap-2 px-3 py-2 border-bottom"
+                style="font-size: 0.8rem; background: rgba(99, 102, 241, 0.08); color: var(--bs-primary);">
+                <i class="bi bi-arrow-up-short" style="font-size: 1.1rem;"></i>
+                <span>New set created — type its name above; it saves when you click away.</span>
+            </div>
+            {% endif %}
 
             <div class="d-flex align-items-center gap-1 px-3 py-2 border-bottom"
                 style="background: var(--bs-tertiary-bg);">
@@ -251,5 +259,24 @@
             initPlanSortable();
         }
     });
+
+    /* ── One-time rename hint for freshly created sets ── */
+    (function () {
+        var hint = document.getElementById('rename-hint');
+        if (!hint) return;
+        var nameInput = document.getElementById('setNameInput');
+        if (nameInput) {
+            nameInput.focus();
+            nameInput.select();
+            // Dismiss the hint once the user is done typing the name
+            nameInput.addEventListener('blur', function () {
+                hint.remove();
+            }, { once: true });
+        }
+        // Strip ?created from the URL so a refresh doesn't show the hint again
+        var url = new URL(window.location);
+        url.searchParams.delete('created');
+        history.replaceState(null, '', url);
+    })();
 </script>
 {% endblock %}

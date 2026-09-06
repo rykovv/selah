@@ -39,7 +39,10 @@ _hymn_order = (
 
 @router.get("/hymns", response_class=HTMLResponse)
 def page_hymns_manager(
-    request: Request, set: Optional[int] = None, db: Session = Depends(get_db)
+    request: Request,
+    set: Optional[int] = None,
+    created: Optional[int] = None,
+    db: Session = Depends(get_db),
 ):
     current_set = get_set_or_active(db, set)
     sets = db.query(HymnSetModel).order_by(HymnSetModel.id).all()
@@ -54,6 +57,7 @@ def page_hymns_manager(
             "library": library,
             "sets": sets,
             "current_set": current_set,
+            "just_created": bool(created),
         },
     )
 
@@ -165,7 +169,9 @@ def new_hymn_set(db: Session = Depends(get_db)):
     db.add(new_set)
     db.commit()
     db.refresh(new_set)
-    return RedirectResponse(f"/hymns?set={new_set.id}", status_code=303)
+    return RedirectResponse(
+        f"/hymns?set={new_set.id}&created=1", status_code=303
+    )
 
 
 @router.post("/hymn-sets/{set_id}/activate")
