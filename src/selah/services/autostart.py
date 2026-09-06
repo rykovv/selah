@@ -14,7 +14,9 @@ from paths import is_frozen
 logger = logging.getLogger(__name__)
 
 _RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-_VALUE_NAME = "vMixChurchServiceManager"
+_VALUE_NAME = "Selah"
+# Pre-rebrand value name; read for state, removed whenever we write
+_LEGACY_VALUE_NAME = "vMixChurchServiceManager"
 
 
 def is_supported() -> bool:
@@ -31,12 +33,15 @@ def is_enabled() -> bool:
         return False
     import winreg
 
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY) as key:
-            value, _ = winreg.QueryValueEx(key, _VALUE_NAME)
-        return bool(value)
-    except OSError:
-        return False
+    for name in (_VALUE_NAME, _LEGACY_VALUE_NAME):
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY) as key:
+                value, _ = winreg.QueryValueEx(key, name)
+            if value:
+                return True
+        except OSError:
+            continue
+    return False
 
 
 def set_enabled(enabled: bool) -> bool:
@@ -50,6 +55,11 @@ def set_enabled(enabled: bool) -> bool:
     with winreg.OpenKey(
         winreg.HKEY_CURRENT_USER, _RUN_KEY, 0, winreg.KEY_SET_VALUE
     ) as key:
+        # Always clear the pre-rebrand value (points at the old exe name)
+        try:
+            winreg.DeleteValue(key, _LEGACY_VALUE_NAME)
+        except FileNotFoundError:
+            pass
         if enabled:
             winreg.SetValueEx(key, _VALUE_NAME, 0, winreg.REG_SZ, _command())
             logger.info("Autostart enabled: %s", _command())

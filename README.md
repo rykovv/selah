@@ -1,21 +1,25 @@
-# vMix Church Service Manager
+# Selah
 
-A web-based church service management tool that serves hymn slides, program data, and custom data feeds to [vMix](https://www.vmix.com/) via JSON API endpoints.
+**Selah** is a church service management system: plan services, manage hymn sets and lyrics, generate PowerPoint decks, and feed live data to [vMix](https://www.vmix.com/) via JSON API endpoints.
 
-Built with FastAPI and HTMX for a responsive, single-page-like experience without a JavaScript framework.
+Built with FastAPI and HTMX for a responsive, single-page-like experience without a JavaScript framework. Ships as a Windows installer with in-app auto-update; runs fully offline.
+
+> *Selah* — the word that appears throughout the Psalms, often understood as a pause to reflect during worship.
 
 ## Features
 
 - **Hymn Library** -- import, create, and edit hymns with dual slide types (vMix and PowerPoint)
-- **Service Plan** -- arrange hymns for a worship service with drag-to-reorder
+- **Hymn Sets** -- keep multiple named hymn sets (Sabbath School, Divine Service, …); the live set drives the vMix feed
 - **Service Programs** -- build named program rundowns (announcements, worship items, etc.) with mute/unmute support
+- **Cell References** -- fill any program or data table cell by referencing another (`$row:Column`) with live resolution
 - **Data Tables** -- create custom data feeds with user-defined columns and rows, each served at a fixed JSON endpoint (e.g. `/api/feed/bible-verses`)
-- **Data Table Patterns** -- configure data tables to supply `{{name_N}}` substitution tags to PowerPoint templates
-- **PowerPoint Generation** -- export hymn slides or full programs as `.pptx`, with template-based placeholder replacement and timestamped filenames
+- **Data Table Patterns** -- configure data tables to supply `{{name_N}}` / `{{name_column_N}}` substitution tags to PowerPoint templates
+- **PowerPoint Generation** -- export hymn slides or full programs as `.pptx`, with template-based placeholder replacement, live preview, and font inheritance
 - **Presentation Templates** -- upload custom PowerPoint templates for program exports
 - **API Monitoring** -- real-time request-rate charts for all JSON endpoints
+- **Auto-Update** -- installed apps check GitHub releases and update with one click
 - **Dark/Light Theme** -- toggle with automatic persistence
-- **Configurable Storage** -- custom database and template directory paths via Settings, persisted in a local `config.json`
+- **Configurable Storage** -- custom database and template directory paths via Settings; point them at a synced folder to share across machines
 - **Versioned Migrations** -- automatic database schema upgrades on startup
 
 ## Tech Stack
@@ -23,30 +27,25 @@ Built with FastAPI and HTMX for a responsive, single-page-like experience withou
 | Layer | Technology |
 |-------|------------|
 | Backend | Python 3.9, FastAPI, SQLAlchemy (sync), Jinja2 |
-| Frontend | HTMX, Bootstrap 5, Sortable.js, Chart.js |
+| Frontend | HTMX, Bootstrap 5, Sortable.js, Chart.js (all vendored, offline-capable) |
 | Database | SQLite |
 | PowerPoint | python-pptx, Pillow |
-| Distribution | PyInstaller (standalone `.exe`) |
+| Distribution | Inno Setup installer + PyInstaller (windowed `.exe`) |
 
 ## Getting Started
 
-### Prerequisites
+### Installing (Windows)
 
-- Python 3.9+
+Download `selah-setup-<version>.exe` from the [latest release](https://github.com/rykovv/selah/releases) and run it. No admin rights needed; data lives in `%APPDATA%\Selah`.
 
-### Installation
+### Running from source
 
 ```bash
-git clone <repo-url>
-cd vmix-hymal-manager
+git clone https://github.com/rykovv/selah.git
+cd selah
 pip install -r requirements.txt
-```
-
-### Running
-
-```bash
-cd src/vmix-church-service-manager
-python app.py
+cd src/selah
+python -m uvicorn app:app --host 0.0.0.0 --port 10001
 ```
 
 The app starts at **http://localhost:10001**. On first run, a setup wizard will prompt you to configure database and template paths.
@@ -54,29 +53,24 @@ The app starts at **http://localhost:10001**. On first run, a setup wizard will 
 ## Project Structure
 
 ```
-src/vmix-church-service-manager/
-    app.py                  # Entry point (uvicorn)
+src/selah/
+    app.py                  # Entry point (uvicorn, logging)
     factory.py              # Application factory, middleware
     config.py               # Settings (host, port, paths, version)
     config_file.py          # Persistent config.json reader/writer
+    paths.py                # Windows-conventional data/log locations
     database.py             # SQLAlchemy engine, session, migrations
     models.py               # ORM models + Pydantic schemas
-    utils.py                # Shared utilities
-    routes/
-        dashboard.py        # Dashboard page
-        hymns.py            # Hymn CRUD, editor, service plan
-        programs.py         # Program CRUD, items, PPT export
-        data_tables.py      # Data table CRUD, row management, patterns
-        templates_mgr.py    # Template upload/delete
-        api.py              # JSON API endpoints
-        monitoring.py       # Monitoring dashboard + stats API
-        settings.py         # Storage path configuration
-    services/
-        pptx_service.py     # PowerPoint generation (3-phase)
-        program_service.py  # Program JSON serialization
-        monitoring.py       # Request rate tracking
+    utils.py                # Shared utilities (incl. cell reference resolver)
+    routes/                 # dashboard, hymns, programs, data_tables,
+                            # templates_mgr, api, monitoring, settings
+    services/               # pptx generation, program serialization,
+                            # hymn sets, updater, autostart, app control,
+                            # log buffer, monitoring
     templates/              # Jinja2 HTML templates
-scripts/                    # Database migration/patch scripts
+    static/                 # Vendored frontend assets + shared JS
+installer/setup.iss         # Inno Setup script
+build.ps1                   # Local build (PyInstaller + ISCC)
 ```
 
 ## API Endpoints
@@ -85,16 +79,11 @@ These JSON endpoints are designed to be consumed by vMix as data sources:
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/hymns/service` | All hymn slides (flattened rows: number, title, label, text) |
+| `GET /api/hymns/service` | Live hymn set slides (flattened rows: number, title, label, text) |
 | `GET /api/program/current` | Currently active program items |
 | `GET /api/program/{id}/json` | Specific program items by ID |
 | `GET /api/feed/{slug}` | Custom data table rows (user-defined columns) |
 | `GET /api/version` | App version |
-
-### Monitoring
-
-| Endpoint | Description |
-|----------|-------------|
 | `GET /api/monitoring/stats?window=1` | Request-per-second stats for all monitored feeds |
 
 ## PPT Pattern Substitution
@@ -103,48 +92,28 @@ When generating a PowerPoint from a service program, the system scans the templa
 
 | Pattern | Source |
 |---------|--------|
-| `{{tag}}` | Service program item — replaced by the Person/Description of the item whose PPT Tag matches |
-| `{{name_N}}` | Data table pattern — replaced by row N of a data table with pattern "name" enabled |
-| `{{hymn_N}}` | Service plan hymn — exploded into title + lyrics slides |
+| `{{tag}}` | Service program item — replaced by the Subtitle of the item whose Tag matches |
+| `{{name_N}}` / `{{name_column_N}}` | Data table pattern — value column or any column of row N |
+| `{{hymn_N}}` | Live hymn set — exploded into title + lyrics slides |
 
 Configure data table patterns in the data table editor via the **Pattern** button.
 
-## Configuration
-
-Default settings (in `config.py`):
-
-| Setting | Default |
-|---------|---------|
-| Host | `0.0.0.0` |
-| Port | `10001` |
-| Database | `hymns.db` (relative to CWD) |
-| Templates dir | `templates/` |
-
-Custom database and template directory paths can be configured through the **Settings** page. Paths are persisted in `config.json` (next to the executable) so they survive reinstalls and fresh runs.
-
-## Database
-
-SQLite with 10 tables, auto-created on first run. The schema is defined in `database.py` and mirrored by SQLAlchemy models in `models.py`.
-
-Versioned migrations run automatically on startup. The current schema version is tracked in the `app_settings` table.
-
 ## Building
 
-A PyInstaller spec file is included for building a standalone Windows executable:
-
-```bash
-pyinstaller vmix-church-service-manager.spec
+```powershell
+.\build.ps1              # PyInstaller bundle + Inno Setup installer
+.\build.ps1 -SkipInstaller
 ```
 
-Output: `dist/vmix-church-service-manager/vmix-church-service-manager.exe`
+Output: `dist\installer\selah-setup-<version>.exe` (requires [Inno Setup 6](https://jrsoftware.org/isdl.php)).
 
 ## Releases
 
-Automated via GitHub Actions. Push a tag matching `v*` to trigger a build:
+Automated via GitHub Actions. Bump `APP_VERSION` in `config.py`, then push a matching tag:
 
 ```bash
-git tag -a v1.1.0 -m "v1.1.0"
-git push origin v1.1.0
+git tag v1.5.0
+git push origin v1.5.0
 ```
 
-The workflow builds on Windows, creates a zip archive, and publishes a GitHub Release with auto-generated notes.
+Every release ships the installer (which is also the silent auto-update payload) and a portable zip.

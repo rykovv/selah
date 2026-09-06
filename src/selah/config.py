@@ -5,8 +5,8 @@ from paths import data_dir, is_frozen, migrate_legacy_layout
 
 
 class Settings:
-    APP_VERSION: str = "1.4.1"
-    GITHUB_REPO: str = "rykovv/vmix-church-service-manager"
+    APP_VERSION: str = "1.5.0"
+    GITHUB_REPO: str = "rykovv/selah"
     HOST: str = "0.0.0.0"
     PORT: int = 10001
     needs_setup: bool = False

@@ -1,22 +1,29 @@
-; Inno Setup script for vMix Church Service Manager
+; Inno Setup script for Selah — church service management
 ;
 ; Per-user install (no admin rights, silent auto-updates):
-;   program : %LOCALAPPDATA%\Programs\vMix Church Service Manager
-;   data    : %APPDATA%\vMix Church Service Manager   (created by the app)
-;   logs    : %LOCALAPPDATA%\vMix Church Service Manager\logs
+;   program : %LOCALAPPDATA%\Programs\Selah
+;   data    : %APPDATA%\Selah   (created by the app)
+;   logs    : %LOCALAPPDATA%\Selah\logs
 ;
-; Build:  ISCC /DMyAppVersion=1.2.0 installer\setup.iss
+; Build:  ISCC /DMyAppVersion=1.5.0 installer\setup.iss
 ; Update: the app runs this installer with
 ;         /VERYSILENT /NORESTART /SP- /FORCECLOSEAPPLICATIONS /RELAUNCH=1
+;
+; NOTE: AppId is unchanged from the pre-rebrand "vMix Church Service
+; Manager" so existing installs upgrade in place (keeping their install
+; directory). Legacy exe/shortcuts/registry values are cleaned up below.
 
 #ifndef MyAppVersion
-#define MyAppVersion "1.1.1"
+#define MyAppVersion "1.5.0"
 #endif
 
-#define MyAppName "vMix Church Service Manager"
-#define MyAppExeName "vmix-church-service-manager.exe"
+#define MyAppName "Selah"
+#define MyAppTagline "Selah — church service management"
+#define MyAppExeName "selah.exe"
+#define MyLegacyAppName "vMix Church Service Manager"
+#define MyLegacyExeName "vmix-church-service-manager.exe"
 #define MyAppPublisher "Vladislav Rykov"
-#define MyAppURL "https://github.com/rykovv/vmix-church-service-manager"
+#define MyAppURL "https://github.com/rykovv/selah"
 
 [Setup]
 AppId={{B7E63B6A-58D0-4E7C-9A2B-4E1D33C5A9F1}
@@ -30,7 +37,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=..\dist\installer
-OutputBaseFilename=vmix-church-service-manager-setup-{#MyAppVersion}
+OutputBaseFilename=selah-setup-{#MyAppVersion}
 SetupIconFile=..\app.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
@@ -48,8 +55,15 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
 Name: "autostart"; Description: "Start {#MyAppName} automatically when Windows starts"
 
 [Files]
-Source: "..\dist\vmix-church-service-manager\*"; DestDir: "{app}"; \
+Source: "..\dist\selah\*"; DestDir: "{app}"; \
     Flags: recursesubdirs ignoreversion
+
+[InstallDelete]
+; Pre-rebrand binary and shortcuts left behind by upgrades
+Type: files; Name: "{app}\{#MyLegacyExeName}"
+Type: files; Name: "{autoprograms}\{#MyLegacyAppName}.lnk"
+Type: files; Name: "{autoprograms}\{#MyLegacyAppName} Dashboard.lnk"
+Type: files; Name: "{autodesktop}\{#MyLegacyAppName}.lnk"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -57,9 +71,12 @@ Name: "{autoprograms}\{#MyAppName} Dashboard"; Filename: "http://localhost:10001
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
+; Remove the pre-rebrand autostart value (it points at the old exe name)
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
+    ValueType: none; ValueName: "vMixChurchServiceManager"; Flags: deletevalue
 ; Same value the in-app Settings toggle manages (services/autostart.py)
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
-    ValueType: string; ValueName: "vMixChurchServiceManager"; \
+    ValueType: string; ValueName: "Selah"; \
     ValueData: """{app}\{#MyAppExeName}"""; Tasks: autostart; \
     Flags: uninsdeletevalue
 
@@ -82,20 +99,27 @@ begin
   Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
 end;
 
-// Offer to keep or remove user data on uninstall
+// Offer to keep or remove user data on uninstall (both current and
+// pre-rebrand data directories)
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  DataDir: String;
+  DataDir, LegacyDataDir: String;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
     DataDir := ExpandConstant('{userappdata}\{#MyAppName}');
-    if DirExists(DataDir) then
+    LegacyDataDir := ExpandConstant('{userappdata}\{#MyLegacyAppName}');
+    if DirExists(DataDir) or DirExists(LegacyDataDir) then
     begin
       if MsgBox('Remove your data as well (hymn database, uploaded templates, settings)?'
                 + #13#10 + DataDir,
                 mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
-        DelTree(DataDir, True, True, True);
+      begin
+        if DirExists(DataDir) then
+          DelTree(DataDir, True, True, True);
+        if DirExists(LegacyDataDir) then
+          DelTree(LegacyDataDir, True, True, True);
+      end;
     end;
   end;
 end;

@@ -1,4 +1,4 @@
-# Build the PyInstaller bundle and the Inno Setup installer.
+# Build the PyInstaller bundle and the Inno Setup installer for Selah.
 #
 # Usage:  .\build.ps1            (version read from config.py)
 #         .\build.ps1 -SkipInstaller
@@ -10,21 +10,21 @@ $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 
 # --- Read APP_VERSION from config.py ---
-$configPy = Get-Content (Join-Path $root "src\vmix-church-service-manager\config.py") -Raw
+$configPy = Get-Content (Join-Path $root "src\selah\config.py") -Raw
 if ($configPy -notmatch 'APP_VERSION:\s*str\s*=\s*"([^"]+)"') {
     throw "Could not read APP_VERSION from config.py"
 }
 $version = $Matches[1]
-Write-Host "Building vMix Church Service Manager v$version" -ForegroundColor Cyan
+Write-Host "Building Selah v$version" -ForegroundColor Cyan
 
 # --- PyInstaller ---
 $python = Join-Path $root ".venv\Scripts\python.exe"
 if (-not (Test-Path $python)) { $python = "python" }
-& $python -m PyInstaller --noconfirm --clean (Join-Path $root "vmix-church-service-manager.spec")
+& $python -m PyInstaller --noconfirm --clean (Join-Path $root "selah.spec")
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
 if ($SkipInstaller) {
-    Write-Host "Skipped installer. Bundle: dist\vmix-church-service-manager" -ForegroundColor Green
+    Write-Host "Skipped installer. Bundle: dist\selah" -ForegroundColor Green
     exit 0
 }
 
@@ -41,4 +41,4 @@ if (-not $iscc) {
 & $iscc "/DMyAppVersion=$version" (Join-Path $root "installer\setup.iss")
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
-Write-Host "Installer: dist\installer\vmix-church-service-manager-setup-$version.exe" -ForegroundColor Green
+Write-Host "Installer: dist\installer\selah-setup-$version.exe" -ForegroundColor Green

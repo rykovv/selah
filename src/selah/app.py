@@ -1,4 +1,4 @@
-"""vMix Church Service Manager -- application entry point."""
+"""Selah — church service management. Application entry point."""
 
 import logging
 import logging.handlers

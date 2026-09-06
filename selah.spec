@@ -2,12 +2,12 @@
 
 
 a = Analysis(
-    ['src\\vmix-church-service-manager\\app.py'],
-    pathex=['src/vmix-church-service-manager'],
+    ['src\\selah\\app.py'],
+    pathex=['src/selah'],
     binaries=[],
     datas=[
-        ('src/vmix-church-service-manager/templates', 'templates'),
-        ('src/vmix-church-service-manager/static', 'static'),
+        ('src/selah/templates', 'templates'),
+        ('src/selah/static', 'static'),
     ],
     hiddenimports=[
         'config_file',
@@ -43,13 +43,13 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='vmix-church-service-manager',
+    name='selah',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     # Windowed: the installed app runs in the background (autostart-friendly);
-    # server logs go to %LOCALAPPDATA%\vMix Church Service Manager\logs
+    # server logs go to %LOCALAPPDATA%\Selah\logs
     console=False,
     icon='app.ico',
     disable_windowed_traceback=False,
@@ -65,5 +65,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='vmix-church-service-manager',
+    name='selah',
 )

@@ -3,7 +3,7 @@
 Stores database and template paths so the app can find them on any machine,
 even before the bootstrap database exists.
 
-Location: %APPDATA%\\vMix Church Service Manager (frozen — survives updates
+Location: %APPDATA%\\Selah (frozen — survives updates
 that replace the install directory) or the source directory (dev).
 """
 

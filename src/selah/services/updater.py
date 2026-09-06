@@ -73,7 +73,7 @@ def _fetch_latest_release() -> dict:
         API_LATEST,
         headers={
             "Accept": "application/vnd.github+json",
-            "User-Agent": f"vmix-church-service-manager/{settings.APP_VERSION}",
+            "User-Agent": f"selah/{settings.APP_VERSION}",
         },
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
@@ -127,13 +127,13 @@ def check_for_update() -> dict:
 def _download_and_install():
     state = get_state()
     url = state["asset_url"]
-    name = state["asset_name"] or "vmix-church-service-manager-setup.exe"
+    name = state["asset_name"] or "selah-setup.exe"
     target = os.path.join(tempfile.gettempdir(), name)
 
     _set(status="downloading")
     try:
         req = urllib.request.Request(
-            url, headers={"User-Agent": f"vmix-church-service-manager/{settings.APP_VERSION}"}
+            url, headers={"User-Agent": f"selah/{settings.APP_VERSION}"}
         )
         with urllib.request.urlopen(req, timeout=60) as resp, open(target, "wb") as out:
             while True:

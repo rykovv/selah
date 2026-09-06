@@ -5,8 +5,8 @@ name: Build & Release
 # comparison works against the release tag.
 #
 # Every release ships:
-#   - vmix-church-service-manager-setup-<version>.exe   (install + silent update)
-#   - vmix-church-service-manager-<version>-portable.zip (no-install fallback)
+#   - selah-setup-<version>.exe   (install + silent update)
+#   - selah-<version>-portable.zip (no-install fallback)
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
       - name: Verify tag matches APP_VERSION
         shell: pwsh
         run: |
-          $config = Get-Content "src/vmix-church-service-manager/config.py" -Raw
+          $config = Get-Content "src/selah/config.py" -Raw
           if ($config -notmatch 'APP_VERSION:\s*str\s*=\s*"([^"]+)"') { throw "APP_VERSION not found" }
           $ver = $Matches[1]
           $tag = "${{ steps.version.outputs.VERSION }}"
@@ -46,7 +46,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Build with PyInstaller
-        run: pyinstaller --noconfirm --clean vmix-church-service-manager.spec
+        run: pyinstaller --noconfirm --clean selah.spec
 
       - name: Build installer (Inno Setup)
         shell: pwsh
@@ -56,12 +56,12 @@ jobs:
 
       - name: Create portable zip archive
         shell: pwsh
-        run: Compress-Archive -Path dist/vmix-church-service-manager/* -DestinationPath dist/installer/vmix-church-service-manager-${{ steps.version.outputs.VERSION }}-portable.zip
+        run: Compress-Archive -Path dist/selah/* -DestinationPath dist/installer/selah-${{ steps.version.outputs.VERSION }}-portable.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            dist/installer/vmix-church-service-manager-setup-${{ steps.version.outputs.VERSION }}.exe
-            dist/installer/vmix-church-service-manager-${{ steps.version.outputs.VERSION }}-portable.zip
+            dist/installer/selah-setup-${{ steps.version.outputs.VERSION }}.exe
+            dist/installer/selah-${{ steps.version.outputs.VERSION }}-portable.zip
