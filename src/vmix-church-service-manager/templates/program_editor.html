@@ -107,9 +107,9 @@
                 <tr>
                     <th style="width: 36px;" class="ps-3 border-bottom text-secondary"></th>
                     <th style="width: 30px;" class="border-bottom text-secondary" title="Row number — reference cells with $row:Column">#</th>
-                    <th style="width: 33%;" class="border-bottom text-secondary">Event Title</th>
-                    <th style="width: 30%;" class="border-bottom text-secondary">Person / Description</th>
-                    <th style="width: 24%;" class="border-bottom text-secondary">PPT Tag</th>
+                    <th style="width: 33%;" class="border-bottom text-secondary">Title (Event)</th>
+                    <th style="width: 30%;" class="border-bottom text-secondary">Subtitle (Person / Description)</th>
+                    <th style="width: 24%;" class="border-bottom text-secondary">Tag (PowerPoint)</th>
                     <th style="width: 72px;" class="border-bottom"></th>
                 </tr>
             </thead>
@@ -156,7 +156,7 @@
             <tbody>
                 <tr>
                     <td><code>{{ '{{' }}tag{{ '}}' }}</code></td>
-                    <td>Program item — replaced by the <em>Person / Description</em> of the item whose PPT Tag matches</td>
+                    <td>Program item — replaced by the <em>Subtitle</em> of the item whose Tag matches</td>
                 </tr>
                 {% if active_patterns %}
                 {% for p in active_patterns %}
