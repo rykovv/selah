@@ -8,12 +8,14 @@ a = Analysis(
     datas=[
         ('src/selah/templates', 'templates'),
         ('src/selah/static', 'static'),
+        ('src/selah/bibles', 'bibles'),
     ],
     hiddenimports=[
         'config_file',
         'paths',
         'routes.dashboard',
         'routes.hymns',
+        'routes.bible',
         'routes.programs',
         'routes.templates_mgr',
         'routes.api',
@@ -28,6 +30,8 @@ a = Analysis(
         'services.appcontrol',
         'services.logbuffer',
         'services.hymn_set_service',
+        'services.bible_service',
+        'services.bible_set_service',
     ],
     hookspath=[],
     hooksconfig={},

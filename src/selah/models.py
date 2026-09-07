@@ -68,6 +68,34 @@ class ServicePlanHymnModel(Base):
     set = relationship("HymnSetModel", back_populates="items")
 
 
+class BibleSetModel(Base):
+    __tablename__ = "bible_sets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    translation = Column(String, default="en/NEW KING JAMES VERSION")
+    is_active = Column(Boolean, default=False)
+    last_used = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    items = relationship(
+        "BibleEntryModel",
+        back_populates="set",
+        cascade="all, delete-orphan",
+    )
+
+
+class BibleEntryModel(Base):
+    __tablename__ = "bible_entries"
+    __table_args__ = (UniqueConstraint("set_id", "sequence"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    set_id = Column(Integer, ForeignKey("bible_sets.id"))
+    sequence = Column(Integer)
+    refs_json = Column(Text, default="[]")
+
+    set = relationship("BibleSetModel", back_populates="items")
+
+
 class ServiceProgramModel(Base):
     __tablename__ = "programs"
 
@@ -173,3 +201,9 @@ class VmixRow(BaseModel):
     SlideText: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BibleRow(BaseModel):
+    Reference: str
+    VerseText: str
+    Translation: str

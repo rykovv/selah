@@ -109,6 +109,20 @@ _TABLE_SQL = [
         key VARCHAR PRIMARY KEY,
         value VARCHAR
     )""",
+    """CREATE TABLE IF NOT EXISTS bible_sets (
+        id INTEGER PRIMARY KEY,
+        name VARCHAR,
+        translation VARCHAR,
+        is_active BOOLEAN DEFAULT 0,
+        last_used DATETIME
+    )""",
+    """CREATE TABLE IF NOT EXISTS bible_entries (
+        id INTEGER PRIMARY KEY,
+        set_id INTEGER REFERENCES bible_sets(id),
+        sequence INTEGER,
+        refs_json TEXT DEFAULT '[]',
+        UNIQUE(set_id, sequence)
+    )""",
 ]
 
 
@@ -214,11 +228,31 @@ def _migrate_1_4_0(conn: sqlite3.Connection):
         )
 
 
+def _migrate_1_6_0(conn: sqlite3.Connection):
+    """Bible verse sets: bible_sets + bible_entries tables."""
+    cursor = conn.cursor()
+    cursor.execute("""CREATE TABLE IF NOT EXISTS bible_sets (
+        id INTEGER PRIMARY KEY,
+        name VARCHAR,
+        translation VARCHAR,
+        is_active BOOLEAN DEFAULT 0,
+        last_used DATETIME
+    )""")
+    cursor.execute("""CREATE TABLE IF NOT EXISTS bible_entries (
+        id INTEGER PRIMARY KEY,
+        set_id INTEGER REFERENCES bible_sets(id),
+        sequence INTEGER,
+        refs_json TEXT DEFAULT '[]',
+        UNIQUE(set_id, sequence)
+    )""")
+
+
 # Ordered list of migrations: (version, description, function)
 MIGRATIONS: List[Tuple[str, str, Callable]] = [
     ("1.0.0", "baseline schema", _migrate_1_0_0),
     ("1.1.0", "data table patterns", _migrate_1_1_0),
     ("1.4.0", "multiple hymn sets", _migrate_1_4_0),
+    ("1.6.0", "bible verse sets", _migrate_1_6_0),
 ]
 
 

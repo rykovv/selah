@@ -5,7 +5,7 @@ from paths import data_dir, is_frozen, migrate_legacy_layout
 
 
 class Settings:
-    APP_VERSION: str = "1.5.0"
+    APP_VERSION: str = "1.6.0"
     GITHUB_REPO: str = "rykovv/selah"
     HOST: str = "0.0.0.0"
     PORT: int = 10001

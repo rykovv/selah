@@ -10,6 +10,7 @@ Built with FastAPI and HTMX for a responsive, single-page-like experience withou
 
 - **Hymn Library** -- import, create, and edit hymns with dual slide types (vMix and PowerPoint)
 - **Hymn Sets** -- keep multiple named hymn sets (Sabbath School, Divine Service, …); the live set drives the vMix feed
+- **Bible** -- verse sets with per-set translations (NKJV bundled; 200+ translations in ~40 languages downloadable), smart reference input with autocomplete, live verse preview, a vMix feed, and PPT export with automatic slide splitting for long passages
 - **Service Programs** -- build named program rundowns (announcements, worship items, etc.) with mute/unmute support
 - **Cell References** -- fill any program or data table cell by referencing another (`$row:Column`) with live resolution
 - **Data Tables** -- create custom data feeds with user-defined columns and rows, each served at a fixed JSON endpoint (e.g. `/api/feed/bible-verses`)
@@ -62,13 +63,15 @@ src/selah/
     database.py             # SQLAlchemy engine, session, migrations
     models.py               # ORM models + Pydantic schemas
     utils.py                # Shared utilities (incl. cell reference resolver)
-    routes/                 # dashboard, hymns, programs, data_tables,
+    routes/                 # dashboard, hymns, bible, programs, data_tables,
                             # templates_mgr, api, monitoring, settings
     services/               # pptx generation, program serialization,
-                            # hymn sets, updater, autostart, app control,
+                            # hymn sets, bible translations & verse sets,
+                            # updater, autostart, app control,
                             # log buffer, monitoring
     templates/              # Jinja2 HTML templates
     static/                 # Vendored frontend assets + shared JS
+    bibles/                 # Bundled Bible data (catalog + KJV + RU Synodal)
 installer/setup.iss         # Inno Setup script
 build.ps1                   # Local build (PyInstaller + ISCC)
 ```
@@ -80,6 +83,7 @@ These JSON endpoints are designed to be consumed by vMix as data sources:
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/hymns/service` | Live hymn set slides (flattened rows: number, title, label, text) |
+| `GET /api/bible/service` | Live Bible verse set (one row per entry: reference, verse text) |
 | `GET /api/program/current` | Currently active program items |
 | `GET /api/program/{id}/json` | Specific program items by ID |
 | `GET /api/feed/{slug}` | Custom data table rows (user-defined columns) |

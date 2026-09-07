@@ -1,0 +1,728 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-4" style="height: calc(100vh - 5.5rem);">
+
+    <!-- ── Verse Sets (cards, live set first) ── -->
+    <div id="setsColumn" class="col-lg-5 d-flex flex-column gap-3 pb-3" style="min-height: 0; overflow-y: auto;">
+        {# Route orders sets: active first, then most recently used #}
+        {% for s in sets %}
+        {% if s.id == current_set.id %}
+        <!-- Selected set: expanded card with its entry list -->
+        <div class="cm-card d-flex flex-column overflow-hidden flex-shrink-0"
+            style="border: 1px solid var(--bs-primary); border-radius: 14px;">
+            <div class="cm-card-header">
+                <h5 class="cm-title flex-grow-1 me-2">
+                    <span class="cm-chip cm-chip-emerald">
+                        <i class="bi bi-book"></i>
+                    </span>
+                    <input type="text" name="name" id="setNameInput"
+                        class="form-control form-control-sm border-0 bg-transparent shadow-none fw-semibold p-0"
+                        style="font-size: 0.95rem; min-width: 0;"
+                        value="{{ current_set.name }}"
+                        title="Rename this set (saves when you click away)"
+                        hx-post="/bible-sets/{{ current_set.id }}/rename"
+                        hx-trigger="blur changed"
+                        hx-swap="none"
+                        hx-on::after-request="if (event.detail.successful) cmToast('Set renamed.', 'success');">
+                    {% if current_set.is_active %}
+                    <span class="badge rounded-pill flex-shrink-0"
+                        style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 0.65rem; letter-spacing: 0.05em;">
+                        ● LIVE
+                    </span>
+                    {% endif %}
+                </h5>
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <span id="bible-count" class="text-secondary" style="font-size: 0.78rem;">
+                        {%- if entries %}{{ entries|length }} entr{{ 'ies' if entries|length != 1 else 'y' }}{% endif -%}
+                    </span>
+                    <button type="button"
+                        class="btn btn-sm btn-success d-flex align-items-center gap-1"
+                        data-bs-toggle="modal" data-bs-target="#bpptSettingsModal"
+                        title="Download this set as PPT">
+                        <i class="bi bi-download"></i>
+                        <span class="d-none d-sm-inline">PPT</span>
+                    </button>
+                </div>
+            </div>
+
+            {% if just_created %}
+            <div id="rename-hint" class="d-flex align-items-center gap-2 px-3 py-2 border-bottom"
+                style="font-size: 0.8rem; background: rgba(99, 102, 241, 0.08); color: var(--bs-primary);">
+                <i class="bi bi-arrow-up-short" style="font-size: 1.1rem;"></i>
+                <span>New set created — type its name above; it saves when you click away.</span>
+            </div>
+            {% endif %}
+
+            <div class="d-flex align-items-center gap-1 px-3 py-2 border-bottom"
+                style="background: var(--bs-tertiary-bg);">
+                {% if not current_set.is_active %}
+                <form method="post" action="/bible-sets/{{ current_set.id }}/activate" class="d-inline">
+                    <button class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                        title="Serve this set on the vMix feed">
+                        <i class="bi bi-broadcast"></i> Set Live
+                    </button>
+                </form>
+                {% endif %}
+                <div class="ms-auto d-flex align-items-center gap-1">
+                    <form method="post" action="/bible-sets/{{ current_set.id }}/clone" class="d-inline">
+                        <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                            title="Duplicate this set with all its verses">
+                            <i class="bi bi-copy"></i><span class="d-none d-md-inline">Duplicate</span>
+                        </button>
+                    </form>
+                    <form method="post" action="/bible-sets/{{ current_set.id }}/delete" class="d-inline"
+                        onsubmit="return confirm('Delete verse set &quot;{{ current_set.name }}&quot; and its entries? This cannot be undone.');">
+                        <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                            title="Delete this verse set">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Translation of this set -->
+            <form method="post" action="/bible-sets/{{ current_set.id }}/translation"
+                class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                <label class="text-secondary flex-shrink-0" style="font-size: 0.78rem;" for="setTranslation">
+                    <i class="bi bi-translate"></i> Translation
+                </label>
+                <select name="translation" id="setTranslation"
+                    class="form-select form-select-sm" style="font-size: 0.8rem;"
+                    onchange="this.form.submit()"
+                    title="Verses in this set are shown and exported in this translation">
+                    {% for t in installed %}
+                    <option value="{{ t.id }}" {{ 'selected' if t.id == current_set.translation }}>
+                        {{ t.language }} — {{ t.name|title }}{% if t.abbr %} ({{ t.abbr }}){% endif %}
+                    </option>
+                    {% endfor %}
+                    {% if not translation and current_set.translation %}
+                    <option value="{{ current_set.translation }}" selected>
+                        {{ current_set.translation }} (not installed)
+                    </option>
+                    {% endif %}
+                </select>
+            </form>
+
+            {% if not translation %}
+            <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom text-danger"
+                style="font-size: 0.8rem; background: rgba(220, 38, 38, 0.06);">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>This set's translation is not installed.</span>
+                <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
+                    style="font-size: 0.72rem;"
+                    data-bs-toggle="modal" data-bs-target="#translationsModal">
+                    Get translations
+                </button>
+            </div>
+            {% endif %}
+
+            <div id="entries-wrap">
+                {% include "partials/bible_entry_list.html" %}
+            </div>
+        </div>
+        {% else %}
+        <!-- Other set: compact card -->
+        <div class="cm-card p-3 d-flex align-items-center gap-2 flex-shrink-0 flex-row"
+            role="button" title="Open this verse set"
+            onclick="window.location = '/bible?set={{ s.id }}';">
+            <span class="cm-chip {{ 'cm-chip-emerald' if s.is_active else 'cm-chip-indigo' }}">
+                <i class="bi bi-book"></i>
+            </span>
+            <span class="fw-semibold" style="font-size: 0.9rem;">{{ s.name }}</span>
+            {% if s.is_active %}
+            <span class="badge rounded-pill"
+                style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 0.65rem; letter-spacing: 0.05em;">
+                ● LIVE
+            </span>
+            {% endif %}
+            <span class="text-secondary" style="font-size: 0.78rem;">
+                {{ s.items|length }} entr{{ 'ies' if s.items|length != 1 else 'y' }}
+            </span>
+            <div class="ms-auto d-flex align-items-center gap-1" onclick="event.stopPropagation();">
+                {% if not s.is_active %}
+                <form method="post" action="/bible-sets/{{ s.id }}/activate" class="d-inline">
+                    <button class="btn btn-sm btn-outline-success border-0 p-1 d-flex align-items-center"
+                        title="Serve this set on the vMix feed">
+                        <i class="bi bi-broadcast"></i>
+                    </button>
+                </form>
+                {% endif %}
+                <form method="post" action="/bible-sets/{{ s.id }}/clone" class="d-inline">
+                    <button class="btn btn-sm btn-outline-secondary border-0 p-1 d-flex align-items-center"
+                        title="Duplicate this set">
+                        <i class="bi bi-copy"></i>
+                    </button>
+                </form>
+                <form method="post" action="/bible-sets/{{ s.id }}/delete" class="d-inline"
+                    onsubmit="return confirm('Delete verse set &quot;{{ s.name }}&quot; and its entries? This cannot be undone.');">
+                    <button class="btn btn-sm btn-outline-danger border-0 p-1 d-flex align-items-center"
+                        title="Delete this verse set">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <!-- New set -->
+        <form method="post" action="/bible-sets/new" class="flex-shrink-0">
+            <button class="btn w-100 d-flex align-items-center justify-content-center gap-2 text-secondary"
+                style="border: 1.5px dashed var(--bs-border-color); border-radius: 14px; padding: 0.6rem; font-size: 0.85rem;">
+                <i class="bi bi-plus-lg"></i> New Verse Set
+            </button>
+        </form>
+    </div>
+
+    <!-- ── Verse Builder ── -->
+    <div class="col-lg-7 d-flex flex-column" style="min-height: 0;">
+        {# Height is set by JS to end at the bottom of the last set card on
+           the left (capped at the column height); max-height is the no-JS
+           fallback #}
+        <div id="builderCard" class="cm-card d-flex flex-column overflow-hidden" style="max-height: 100%;">
+
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-indigo">
+                        <i class="bi bi-journal-plus"></i>
+                    </span>
+                    <span id="builderTitle">Add Verses</span>
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                        data-bs-toggle="modal" data-bs-target="#translationsModal"
+                        title="Download or remove Bible translations">
+                        <i class="bi bi-translate"></i>
+                        <span class="d-none d-md-inline">Translations</span>
+                    </button>
+                    <a href="/api/bible/service" target="_blank"
+                        class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                        title="vMix JSON feed (live set)">
+                        <i class="bi bi-broadcast"></i>
+                        <span class="d-none d-md-inline">vMix Feed</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-3" style="min-height: 0;">
+
+                {% if not translation %}
+                <div class="cm-empty">
+                    <i class="bi bi-translate cm-empty-icon"></i>
+                    <p>Install the set's translation to start adding verses.</p>
+                    <button type="button" class="btn btn-sm btn-primary"
+                        data-bs-toggle="modal" data-bs-target="#translationsModal">
+                        <i class="bi bi-download"></i> Get translations
+                    </button>
+                </div>
+                {% else %}
+
+                <form id="entryForm"
+                    hx-post="/bible/entries/save"
+                    hx-target="#entries-wrap"
+                    hx-swap="innerHTML"
+                    class="d-flex flex-column gap-3">
+                    <input type="hidden" name="set_id" value="{{ current_set.id }}">
+                    <input type="hidden" name="entry_id" id="entryId" value="">
+
+                    <div>
+                        <label class="form-label fw-semibold small mb-1" for="refInput">References</label>
+                        <div class="position-relative">
+                            <input type="text" class="form-control" name="refs" id="refInput"
+                                placeholder="e.g. John 3:16-18; Psalms 23"
+                                autocomplete="off" spellcheck="false">
+                            <div id="refSuggest" class="list-group position-absolute w-100 shadow d-none"
+                                style="z-index: 1050; max-height: 260px; overflow-y: auto; top: 100%;"></div>
+                        </div>
+                        <div class="form-text" style="font-size: 0.75rem;">
+                            One entry = one feed row / one slide.
+                            "<code>;</code>" combines references — even from different books —
+                            into <em>one</em> entry (<code>John 3:16; Romans 5:8</code>);
+                            "<code>!</code>" starts a <em>separate</em> entry
+                            (<code>John 3:16! Romans 5:8</code>).
+                            Ranges: <code>3:16-18</code>, whole chapter: <code>Psalms 23</code>.
+                        </div>
+                    </div>
+
+                    {# Actions sit above the picker/preview so they stay visible
+                       even when the preview grows tall (e.g. one entry per verse
+                       for a whole chapter) #}
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="submit" id="saveEntryBtn" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+                            <i class="bi bi-plus-lg"></i> <span id="saveEntryLabel">Add to Set</span>
+                        </button>
+                        <button type="button" id="cancelEditBtn" class="btn btn-outline-secondary btn-sm d-none">
+                            Cancel edit
+                        </button>
+                    </div>
+
+                    <!-- Browse: dropdown picker fills the reference box -->
+                    <div class="p-2 rounded" style="background: var(--bs-tertiary-bg);">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small text-secondary mb-1">Book</label>
+                                <select id="pickBook" class="form-select form-select-sm"></select>
+                            </div>
+                            <div class="col-3 col-md-2">
+                                <label class="form-label small text-secondary mb-1">Chapter</label>
+                                <select id="pickChapter" class="form-select form-select-sm"></select>
+                            </div>
+                            <div class="col-3 col-md-2">
+                                <label class="form-label small text-secondary mb-1">From</label>
+                                <select id="pickFrom" class="form-select form-select-sm"></select>
+                            </div>
+                            <div class="col-3 col-md-2">
+                                <label class="form-label small text-secondary mb-1">To</label>
+                                <select id="pickTo" class="form-select form-select-sm"></select>
+                            </div>
+                            <div class="col-3 col-md-2">
+                                <div class="btn-group w-100">
+                                    <button type="button" id="pickInsert" class="btn btn-sm btn-outline-primary"
+                                        title="Add this reference to the current entry">
+                                        <i class="bi bi-arrow-up-left"></i> Insert
+                                    </button>
+                                    <button type="button"
+                                        class="btn btn-sm btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        <span class="visually-hidden">Insert options</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" style="font-size: 0.85rem;">
+                                        <li><button type="button" class="dropdown-item" id="pickInsertSame">
+                                            Add to current entry <span class="text-secondary">(;)</span>
+                                        </button></li>
+                                        <li><button type="button" class="dropdown-item" id="pickInsertNew">
+                                            As a new entry <span class="text-secondary">(!)</span>
+                                        </button></li>
+                                        <li><button type="button" class="dropdown-item" id="pickInsertPerVerse">
+                                            One entry per verse
+                                        </button></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live preview of the entry as it will appear on the feed/slide -->
+                    <div>
+                        <label class="form-label fw-semibold small mb-1">Preview</label>
+                        {# No own height cap — the card body scrolls as one,
+                           bounded by the card, which ends at the matched
+                           border (or the screen edge) #}
+                        <div id="refPreview" class="p-3 rounded"
+                            style="border: 1px solid var(--bs-border-color); min-height: 5rem; font-size: 0.9rem;">
+                            <span class="text-secondary" style="font-size: 0.8rem;">
+                                Start typing a reference to see the verse text…
+                            </span>
+                        </div>
+                    </div>
+                </form>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ── Translations Modal ── -->
+<div class="modal fade" id="translationsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="cm-chip cm-chip-indigo"><i class="bi bi-translate"></i></span>
+                    <h5 class="modal-title fw-semibold mb-0">Bible Translations</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="translations-body"
+                hx-get="/bible/translations" hx-trigger="load" hx-swap="innerHTML">
+                <div class="d-flex justify-content-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading…</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span class="text-secondary me-auto" style="font-size: 0.75rem;">
+                    Newly installed translations appear after the page reloads.
+                </span>
+                <button type="button" class="btn btn-secondary btn-sm"
+                    onclick="window.location.reload()">Reload page</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% include "partials/bible_ppt_modal.html" %}
+
+<script>
+    /* Book/chapter/verse map of the set's translation (for the picker and
+       autocomplete). Empty books list when the translation is missing. */
+    var BIBLE_STRUCTURE = {{ structure_json|safe }};
+    var CURRENT_SET_ID = {{ current_set.id }};
+
+    /* ── Drag-to-reorder verse entries ── */
+    var _bibleSortable = null;
+
+    function initBibleSortable() {
+        if (_bibleSortable) {
+            _bibleSortable.destroy();
+            _bibleSortable = null;
+        }
+        var list = document.getElementById('bible-list');
+        if (!list) return; // set is empty — nothing to sort yet
+
+        _bibleSortable = Sortable.create(list, {
+            handle: '.cm-drag-handle',
+            animation: 180,
+            ghostClass: 'cm-sortable-ghost',
+            chosenClass: 'cm-sortable-chosen',
+            onEnd: function (evt) {
+                var rows = evt.to.querySelectorAll('.cm-plan-row');
+                var order = [];
+                rows.forEach(function (row, i) {
+                    row.querySelector('.cm-plan-seq').textContent = i + 1;
+                    order.push(parseInt(row.getAttribute('data-id')));
+                });
+                fetch('/bible/entries/reorder', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(order)
+                });
+            }
+        });
+    }
+
+    initBibleSortable();
+
+    /* ── Builder card height: end at the bottom of the last set card ── */
+    function sizeBuilderCard() {
+        var col = document.getElementById('setsColumn');
+        var card = document.getElementById('builderCard');
+        if (!col || !card) return;
+        // Stacked layout (below lg): columns flow naturally, no matching
+        if (!window.matchMedia('(min-width: 992px)').matches) {
+            card.style.height = '';
+            return;
+        }
+        // Align with the last verse-set card, not the "New Verse Set" button
+        var cards = col.querySelectorAll(':scope > .cm-card');
+        var last = cards.length ? cards[cards.length - 1] : col.lastElementChild;
+        if (!last) return;
+        // Distance from the column top to the last card's bottom border
+        // (scrollHeight can't be used: it never reports below clientHeight)
+        var content = last.getBoundingClientRect().bottom
+            - col.getBoundingClientRect().top + col.scrollTop;
+        card.style.height = Math.min(content, col.clientHeight) + 'px';
+    }
+
+    sizeBuilderCard();
+    window.addEventListener('load', sizeBuilderCard);
+    window.addEventListener('resize', sizeBuilderCard);
+
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target && evt.detail.target.id === 'entries-wrap') {
+            initBibleSortable();
+            sizeBuilderCard(); // entry changes alter the active card's height
+        }
+    });
+
+    /* ── One-time rename hint for freshly created sets ── */
+    (function () {
+        var hint = document.getElementById('rename-hint');
+        if (!hint) return;
+        var nameInput = document.getElementById('setNameInput');
+        if (nameInput) {
+            nameInput.focus();
+            nameInput.select();
+            nameInput.addEventListener('blur', function () {
+                hint.remove();
+            }, { once: true });
+        }
+        var url = new URL(window.location);
+        url.searchParams.delete('created');
+        history.replaceState(null, '', url);
+    })();
+
+    /* ── Verse builder ── */
+    (function () {
+        var form = document.getElementById('entryForm');
+        if (!form) return; // translation missing — builder not rendered
+
+        var refInput = document.getElementById('refInput');
+        var suggest = document.getElementById('refSuggest');
+        var preview = document.getElementById('refPreview');
+        var entryId = document.getElementById('entryId');
+        var saveLabel = document.getElementById('saveEntryLabel');
+        var cancelBtn = document.getElementById('cancelEditBtn');
+        var books = BIBLE_STRUCTURE.books || [];
+
+        /* — Live preview (debounced server-side resolution) — */
+        var _previewTimer = null;
+        var _previewSeq = 0;
+
+        function renderPreview(data) {
+            if (!data) {
+                preview.innerHTML = '<span class="text-secondary" style="font-size: 0.8rem;">' +
+                    'Start typing a reference to see the verse text…</span>';
+                refInput.classList.remove('is-invalid');
+                return;
+            }
+            if (!data.ok) {
+                preview.innerHTML = '<span class="text-danger" style="font-size: 0.85rem;">' +
+                    '<i class="bi bi-exclamation-triangle"></i> </span>' +
+                    '<span class="text-danger" style="font-size: 0.85rem;"></span>';
+                preview.querySelectorAll('span')[1].textContent = data.error;
+                refInput.classList.add('is-invalid');
+                return;
+            }
+            refInput.classList.remove('is-invalid');
+            preview.innerHTML = '';
+            var entries = data.entries || [];
+            entries.forEach(function (e, i) {
+                var wrap = document.createElement('div');
+                if (i > 0) {
+                    wrap.style.borderTop = '1px dashed var(--bs-border-color)';
+                    wrap.style.marginTop = '0.6rem';
+                    wrap.style.paddingTop = '0.6rem';
+                }
+                if (entries.length > 1) {
+                    var cap = document.createElement('div');
+                    cap.className = 'text-secondary text-uppercase';
+                    cap.style.fontSize = '0.65rem';
+                    cap.style.letterSpacing = '0.05em';
+                    cap.textContent = 'Entry ' + (i + 1);
+                    wrap.appendChild(cap);
+                }
+                var refDiv = document.createElement('div');
+                refDiv.className = 'fw-semibold mb-1';
+                refDiv.style.fontSize = '0.85rem';
+                refDiv.textContent = e.reference;
+                var textDiv = document.createElement('div');
+                textDiv.style.whiteSpace = 'pre-line'; // multi-passage entries are newline-delimited
+                textDiv.textContent = e.text;
+                wrap.appendChild(refDiv);
+                wrap.appendChild(textDiv);
+                preview.appendChild(wrap);
+            });
+        }
+
+        function updatePreview() {
+            var value = refInput.value.trim();
+            if (!value) { renderPreview(null); return; }
+            var seq = ++_previewSeq;
+            fetch('/bible/preview?set_id=' + CURRENT_SET_ID +
+                  '&refs=' + encodeURIComponent(value))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (seq === _previewSeq) renderPreview(data);
+                })
+                .catch(function () { });
+        }
+
+        function schedulePreview() {
+            clearTimeout(_previewTimer);
+            _previewTimer = setTimeout(updatePreview, 300);
+        }
+
+        /* — Book-name autocomplete on the current segment — */
+        function currentSegment() {
+            var value = refInput.value;
+            // both entry ("!") and reference (";") separators start a new segment
+            var idx = Math.max(value.lastIndexOf(';'), value.lastIndexOf('!'));
+            return {
+                head: idx >= 0 ? value.slice(0, idx + 1) : '',
+                tail: value.slice(idx + 1)
+            };
+        }
+
+        function hideSuggest() {
+            suggest.classList.add('d-none');
+            suggest.innerHTML = '';
+        }
+
+        function showSuggest() {
+            var seg = currentSegment();
+            var tail = seg.tail.replace(/^\s+/, '');
+            // Once a chapter number follows the book name, stop suggesting
+            if (!tail || /\s\d/.test(tail)) { hideSuggest(); return; }
+            var needle = tail.toLowerCase();
+            var hits = books.filter(function (b) {
+                return b.display.toLowerCase().indexOf(needle) === 0 ||
+                       b.book.toLowerCase().indexOf(needle) === 0;
+            }).slice(0, 8);
+            if (!hits.length ||
+                (hits.length === 1 && hits[0].display.toLowerCase() === needle)) {
+                hideSuggest();
+                return;
+            }
+            suggest.innerHTML = '';
+            hits.forEach(function (b) {
+                var a = document.createElement('button');
+                a.type = 'button';
+                a.className = 'list-group-item list-group-item-action py-1';
+                a.style.fontSize = '0.85rem';
+                a.textContent = b.display;
+                a.addEventListener('mousedown', function (e) {
+                    e.preventDefault(); // keep focus in the input
+                    refInput.value = seg.head + (seg.head ? ' ' : '') + b.display + ' ';
+                    hideSuggest();
+                    refInput.focus();
+                    schedulePreview();
+                });
+                suggest.appendChild(a);
+            });
+            suggest.classList.remove('d-none');
+        }
+
+        refInput.addEventListener('input', function () {
+            showSuggest();
+            schedulePreview();
+        });
+        refInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') hideSuggest();
+        });
+        refInput.addEventListener('blur', function () {
+            setTimeout(hideSuggest, 150);
+        });
+
+        /* — Dropdown picker: Book / Chapter / From / To → Insert — */
+        var pickBook = document.getElementById('pickBook');
+        var pickChapter = document.getElementById('pickChapter');
+        var pickFrom = document.getElementById('pickFrom');
+        var pickTo = document.getElementById('pickTo');
+
+        function fillSelect(sel, count) {
+            sel.innerHTML = '';
+            for (var i = 1; i <= count; i++) {
+                var o = document.createElement('option');
+                o.value = i;
+                o.textContent = i;
+                sel.appendChild(o);
+            }
+        }
+
+        books.forEach(function (b, i) {
+            var o = document.createElement('option');
+            o.value = i;
+            o.textContent = b.display;
+            pickBook.appendChild(o);
+        });
+
+        function onBookChange() {
+            var b = books[parseInt(pickBook.value)];
+            if (!b) return;
+            fillSelect(pickChapter, b.chapters.length);
+            onChapterChange();
+        }
+
+        function onChapterChange() {
+            var b = books[parseInt(pickBook.value)];
+            if (!b) return;
+            var verses = b.chapters[parseInt(pickChapter.value) - 1] || 1;
+            fillSelect(pickFrom, verses);
+            fillSelect(pickTo, verses);
+            pickTo.value = verses; // default selection = the whole chapter
+        }
+
+        pickBook.addEventListener('change', onBookChange);
+        pickChapter.addEventListener('change', onChapterChange);
+        pickFrom.addEventListener('change', function () {
+            if (parseInt(pickTo.value) < parseInt(pickFrom.value)) {
+                pickTo.value = pickFrom.value;
+            }
+        });
+        if (books.length) onBookChange();
+
+        function pickedRef() {
+            var b = books[parseInt(pickBook.value)];
+            if (!b) return null;
+            var ch = parseInt(pickChapter.value);
+            var from = parseInt(pickFrom.value);
+            var to = parseInt(pickTo.value);
+            if (to < from) { var t = to; to = from; from = t; }
+            var maxVerse = b.chapters[ch - 1];
+            var label = b.display + ' ' + ch;
+            if (!(from === 1 && to === maxVerse)) {
+                label += ':' + from + (to > from ? '-' + to : '');
+            }
+            return { book: b, ch: ch, from: from, to: to, label: label };
+        }
+
+        // sep: ';' joins the picked reference into the current entry,
+        //      '!' starts a new entry with it
+        function appendRefs(text, sep) {
+            var existing = refInput.value.trim().replace(/[;!]\s*$/, '');
+            refInput.value = existing ? existing + sep + ' ' + text : text;
+            schedulePreview();
+        }
+
+        document.getElementById('pickInsert').addEventListener('click', function () {
+            var p = pickedRef();
+            if (p) appendRefs(p.label, ';');
+        });
+        document.getElementById('pickInsertSame').addEventListener('click', function () {
+            var p = pickedRef();
+            if (p) appendRefs(p.label, ';');
+        });
+        document.getElementById('pickInsertNew').addEventListener('click', function () {
+            var p = pickedRef();
+            if (p) appendRefs(p.label, '!');
+        });
+        document.getElementById('pickInsertPerVerse').addEventListener('click', function () {
+            var p = pickedRef();
+            if (!p) return;
+            var parts = [];
+            for (var v = p.from; v <= p.to; v++) {
+                parts.push(p.book.display + ' ' + p.ch + ':' + v);
+            }
+            appendRefs(parts.join('! '), '!');
+        });
+
+        /* — Edit / cancel / after-save state — */
+        function resetBuilder() {
+            entryId.value = '';
+            refInput.value = '';
+            refInput.classList.remove('is-invalid');
+            saveLabel.textContent = 'Add to Set';
+            cancelBtn.classList.add('d-none');
+            renderPreview(null);
+        }
+
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.bible-edit-btn');
+            if (!btn) return;
+            entryId.value = btn.getAttribute('data-id');
+            refInput.value = btn.getAttribute('data-refs');
+            saveLabel.textContent = 'Update Entry';
+            cancelBtn.classList.remove('d-none');
+            refInput.focus();
+            updatePreview();
+        });
+
+        cancelBtn.addEventListener('click', resetBuilder);
+
+        form.addEventListener('htmx:afterRequest', function (evt) {
+            if (evt.detail.elt !== form) return;
+            if (!evt.detail.successful) return;
+            var groups = refInput.value.split('!').filter(function (g) {
+                return g.trim();
+            }).length;
+            var msg;
+            if (entryId.value) {
+                msg = groups > 1
+                    ? 'Entry updated; ' + (groups - 1) + ' more added.'
+                    : 'Entry updated.';
+            } else {
+                msg = groups > 1 ? groups + ' entries added.' : 'Entry added.';
+            }
+            cmToast(msg, 'success');
+            resetBuilder();
+        });
+    })();
+</script>
+{% endblock %}

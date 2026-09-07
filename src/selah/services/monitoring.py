@@ -9,6 +9,7 @@ WINDOW_SECONDS = 1
 _request_log: Dict[str, deque] = {
     "/api/hymns/service": deque(maxlen=3600),
     "/api/program/current": deque(maxlen=3600),
+    "/api/bible/service": deque(maxlen=3600),
 }
 
 

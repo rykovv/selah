@@ -49,6 +49,24 @@
             </div>
         </div>
     </div>
+
+    <!-- /api/bible/service -->
+    <div class="col-md-6">
+        <div class="cm-card">
+            <div class="cm-card-header">
+                <h5 class="cm-title">
+                    <span class="cm-chip cm-chip-indigo">
+                        <i class="bi bi-book"></i>
+                    </span>
+                    /api/bible/service
+                </h5>
+                <span class="cm-pill cm-pill-primary" id="bible-rps-badge">0.00 req/s</span>
+            </div>
+            <div style="padding: 1rem; height: 260px;">
+                <canvas id="bibleChart"></canvas>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% if feed_tables %}
@@ -169,6 +187,7 @@
 
     var hymnsChart    = makeChart('hymnsChart', 'indigo');
     var programChart = makeChart('programChart', 'emerald');
+    var bibleChart   = makeChart('bibleChart', 'indigo');
 
     /* Build feed charts dynamically */
     var feedCharts = {};
@@ -199,11 +218,14 @@
             .then(function (data) {
                 pushPoint(hymnsChart, data.hymns_rps);
                 pushPoint(programChart, data.program_rps);
+                pushPoint(bibleChart, data.bible_rps || 0.0);
 
                 document.getElementById('hymns-rps-badge').textContent =
                     data.hymns_rps.toFixed(2) + ' req/s';
                 document.getElementById('program-rps-badge').textContent =
                     data.program_rps.toFixed(2) + ' req/s';
+                document.getElementById('bible-rps-badge').textContent =
+                    (data.bible_rps || 0.0).toFixed(2) + ' req/s';
 
                 var feeds = data.feeds || {};
                 Object.keys(feedCharts).forEach(function (slug) {
@@ -224,6 +246,7 @@
         setTimeout(function () {
             updateChartTheme(hymnsChart, 'indigo');
             updateChartTheme(programChart, 'emerald');
+            updateChartTheme(bibleChart, 'indigo');
             Object.keys(feedCharts).forEach(function (slug) {
                 updateChartTheme(feedCharts[slug], 'amber');
             });

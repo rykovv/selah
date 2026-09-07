@@ -4,7 +4,7 @@
 <div class="row g-4" style="height: calc(100vh - 5.5rem);">
 
     <!-- ── Hymn Sets (cards, live set first) ── -->
-    <div class="col-lg-5 d-flex flex-column gap-3" style="min-height: 0; overflow-y: auto;">
+    <div class="col-lg-5 d-flex flex-column gap-3 pb-3" style="min-height: 0; overflow-y: auto;">
         {# Route orders sets: active first, then most recently used #}
         {% for s in sets %}
         {% if s.id == current_set.id %}

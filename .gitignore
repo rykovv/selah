@@ -8,3 +8,12 @@ __pycache__/
 *.pptx
 *.local.json
 config.json
+
+# Bible translations downloaded at runtime (dev mode stores them next to the
+# bundled ones) — only the bundled catalog + default translations are tracked
+src/selah/bibles/*
+!src/selah/bibles/locale_version_map.json
+!src/selah/bibles/book_name_mapping.json
+!src/selah/bibles/en/
+src/selah/bibles/en/*
+!src/selah/bibles/en/NEW KING JAMES VERSION.json

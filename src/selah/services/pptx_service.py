@@ -358,6 +358,150 @@ def generate_hymn_plan_pptx(plan_items, aspect: str = "4:3", config: Optional[Pp
     return output
 
 
+# --- Bible slide layout estimation ------------------------------------------
+# Text height is estimated from average glyph metrics so long passages can be
+# split across slides *before* they overflow (PowerPoint's shrink-to-fit only
+# kicks in when a slide is edited, so overflow would otherwise ship as-is).
+_EMU_PER_PT = 12700
+_LINE_HEIGHT = 1.22   # typical single-spacing line box, in em
+_CHAR_WIDTH = 0.50    # average proportional-font glyph width, in em
+_FILL_SLACK = 1.06    # tolerate a slightly-full slide before splitting
+
+
+def _verses_text(verses) -> str:
+    """Running text of a verse run; numbers inline when it spans several."""
+    if len(verses) == 1:
+        return verses[0][1]
+    return " ".join(f"{num} {text}" for num, text in verses)
+
+
+def _est_wrapped_lines(text: str, font_pt: float, width_pt: float) -> int:
+    chars_per_line = max(8, int(width_pt / (font_pt * _CHAR_WIDTH)))
+    lines = 0
+    for para in text.split("\n"):
+        lines += max(1, -(-len(para) // chars_per_line))
+    return lines
+
+
+def _est_slide_height(parts, verse_pt, ref_pt, width_pt) -> float:
+    """Estimated content height (pt) of one planned verse slide."""
+    multi = len(parts) > 1
+    h = 0.0
+    for _block, verses in parts:
+        if multi:
+            h += ref_pt * _LINE_HEIGHT + 6  # in-text reference header
+        h += (_est_wrapped_lines(_verses_text(verses), verse_pt, width_pt)
+              * verse_pt * _LINE_HEIGHT)
+    if not multi:
+        h += 18 + ref_pt * _LINE_HEIGHT  # bottom reference line
+    return h
+
+
+def _part_label(block: dict, verses) -> str:
+    """Reference label for a (possibly partial) verse run of one block."""
+    if len(verses) == len(block["verses"]):
+        return block["label"]
+    first, last = verses[0][0], verses[-1][0]
+    label = "{} {}:{}".format(block["book"], block["chapter"], first)
+    return label if last == first else f"{label}-{last}"
+
+
+def _plan_entry_slides(blocks, verse_pt, ref_pt, width_pt, height_pt):
+    """Split one entry into slides at verse boundaries.
+
+    Returns a list of slides; each slide is a list of (block, verses) parts.
+    A verse that alone exceeds the estimate stays on its own slide (the text
+    frame's shrink-to-fit autofit is the fallback there).
+    """
+    slides = []
+    cur = []
+    for block in blocks:
+        for verse in block["verses"]:
+            candidate = [(b, list(vs)) for b, vs in cur]
+            if candidate and candidate[-1][0] is block:
+                candidate[-1][1].append(verse)
+            else:
+                candidate.append((block, [verse]))
+            if cur and _est_slide_height(
+                candidate, verse_pt, ref_pt, width_pt
+            ) > height_pt * _FILL_SLACK:
+                slides.append(cur)
+                cur = [(block, [verse])]
+            else:
+                cur = candidate
+    if cur:
+        slides.append(cur)
+    return slides
+
+
+def generate_bible_set_pptx(entries_blocks, aspect: str = "4:3", config: Optional[PptxConfig] = None) -> BytesIO:
+    """Generate a PPTX from a Bible verse set.
+
+    *entries_blocks* is a list of entries; each entry is a list of blocks
+    ({label, book, chapter, verses: [(num, text)]}) as produced by
+    bible_service.resolve_refs_blocks. Each entry renders as one slide —
+    the verse text centered with the reference beneath it — except that
+    passages too long for one slide are split at verse boundaries, each
+    continuation slide labeled with its actual verse sub-range. When a slide
+    holds verses from several places, each part starts under its own
+    reference header instead of the single bottom line. Sizes map onto
+    PptxConfig as lyrics_size (verse text) and title_size (references).
+    """
+    cfg = config or PptxConfig()
+    prs = Presentation()
+
+    slide_w, slide_h, margin = _geometry(aspect)
+    prs.slide_width = slide_w
+    prs.slide_height = slide_h
+    safe_w = slide_w - margin * 2
+    safe_h = slide_h - margin * 2
+    width_pt = safe_w / _EMU_PER_PT
+    height_pt = safe_h / _EMU_PER_PT
+    verse_pt = cfg._lyrics_size_raw
+    ref_pt = cfg._title_size_raw
+
+    def _styled(p, text, size, bold, space_before=None):
+        p.text = text
+        p.font.name = cfg.font_name
+        p.font.size = size
+        p.font.bold = bold
+        p.font.color.rgb = cfg.text_color
+        p.alignment = PP_ALIGN.CENTER
+        if space_before is not None:
+            p.space_before = Pt(space_before)
+
+    for blocks in entries_blocks:
+        for parts in _plan_entry_slides(
+            blocks, verse_pt, ref_pt, width_pt, height_pt
+        ):
+            slide = _create_bg_slide(prs, cfg.bg_color)
+            tf = _add_text_frame(slide, margin, safe_w, safe_h)
+            multi = len(parts) > 1
+
+            first = True
+            for block, verses in parts:
+                if multi:
+                    p = tf.paragraphs[0] if first else tf.add_paragraph()
+                    _styled(p, _part_label(block, verses), cfg.title_size,
+                            True, space_before=None if first else 12)
+                    first = False
+                p = tf.paragraphs[0] if first else tf.add_paragraph()
+                _styled(p, clean_text(_verses_text(verses)), cfg.lyrics_size,
+                        False)
+                first = False
+
+            if not multi:
+                block, verses = parts[0]
+                p = tf.add_paragraph()
+                _styled(p, _part_label(block, verses), cfg.title_size, True,
+                        space_before=18)
+
+    output = BytesIO()
+    prs.save(output)
+    output.seek(0)
+    return output
+
+
 def generate_program_pptx(
     program,
     db: Session,

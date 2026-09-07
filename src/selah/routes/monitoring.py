@@ -29,6 +29,7 @@ def monitoring_stats(window: int = Query(default=WINDOW_SECONDS, ge=1, le=300)):
     result = {
         "hymns_rps": stats.get("/api/hymns/service", 0.0),
         "program_rps": stats.get("/api/program/current", 0.0),
+        "bible_rps": stats.get("/api/bible/service", 0.0),
         "feeds": {},
     }
     for path, rps in stats.items():

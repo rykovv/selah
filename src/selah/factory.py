@@ -18,7 +18,9 @@ from services.monitoring import record_request
 
 logger = logging.getLogger(__name__)
 
-MONITORED_PATHS = {"/api/hymns/service", "/api/program/current"}
+MONITORED_PATHS = {
+    "/api/hymns/service", "/api/program/current", "/api/bible/service",
+}
 
 
 class MonitoringMiddleware(BaseHTTPMiddleware):

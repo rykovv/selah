@@ -1,0 +1,59 @@
+{# Verse entry list for one Bible set. Included on page load and returned by
+   the /bible/entries/save and /bible/entries/{id} (delete) routes so the
+   whole panel refreshes in one swap. When rendered as an HTMX response
+   (oob=True), the count badge in the card header updates out-of-band. #}
+{% if entries %}
+<div id="bible-list">
+    {% for e in entries %}
+    <div id="bible-row-{{ e.id }}" class="cm-plan-row" data-id="{{ e.id }}">
+        <span class="cm-drag-handle" title="Drag to reorder"
+            style="cursor: grab; color: var(--bs-secondary-color); opacity: 0.35; transition: opacity 0.15s; display: flex; align-items: center;">
+            <i class="bi bi-grip-vertical"></i>
+        </span>
+        <span class="cm-plan-seq">{{ loop.index }}</span>
+        <div class="flex-grow-1 min-w-0">
+            <div class="fw-semibold cm-title-wrap" style="font-size: 0.88rem; color: var(--bs-body-color);">
+                {{ e.reference }}
+            </div>
+            {% if e.text %}
+            <div class="text-secondary" style="font-size: 0.78rem; white-space: pre-line; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                {{ e.text }}
+            </div>
+            {% else %}
+            <div class="text-danger" style="font-size: 0.78rem;">
+                <i class="bi bi-exclamation-triangle"></i>
+                Cannot resolve — check the set's translation.
+            </div>
+            {% endif %}
+        </div>
+        <button type="button" class="btn btn-sm border-0 p-1 d-flex align-items-center bible-edit-btn"
+            style="color: var(--bs-secondary-color);"
+            title="Edit this entry in the builder"
+            data-id="{{ e.id }}" data-refs="{{ e.reference }}">
+            <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm border-0 p-1 d-flex align-items-center"
+            style="color: var(--bs-danger-text-emphasis, #dc2626); opacity: 0.35; transition: opacity 0.15s;"
+            onmouseover="this.style.opacity=1"
+            onmouseout="this.style.opacity=0.35"
+            title="Remove"
+            hx-delete="/bible/entries/{{ e.id }}"
+            hx-target="#entries-wrap"
+            hx-swap="innerHTML">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="cm-empty">
+    <i class="bi bi-book cm-empty-icon"></i>
+    <p>No verses yet.<br>Build entries with the panel →</p>
+</div>
+{% endif %}
+
+{% if oob %}
+<span id="bible-count" class="text-secondary" style="font-size: 0.78rem;" hx-swap-oob="true">
+    {%- if entries %}{{ entries|length }} entr{{ 'ies' if entries|length != 1 else 'y' }}{% endif -%}
+</span>
+{% endif %}

@@ -219,15 +219,19 @@
             <a href="#editor">7. Hymn Editor</a>
             <a href="#editor-format" class="doc-toc-sub">Slide source format</a>
             <a href="#editor-wrap" class="doc-toc-sub">Line-length warnings</a>
-            <a href="#ppt-generation">8. How PPTs are generated</a>
+            <a href="#bible">8. Bible</a>
+            <a href="#bible-translations" class="doc-toc-sub">Translations</a>
+            <a href="#bible-builder" class="doc-toc-sub">Building entries</a>
+            <a href="#bible-output" class="doc-toc-sub">Feed &amp; PPT</a>
+            <a href="#ppt-generation">9. How PPTs are generated</a>
             <a href="#ppt-program" class="doc-toc-sub">Service Program PPT</a>
             <a href="#ppt-inherit" class="doc-toc-sub">Font inheritance</a>
             <a href="#ppt-hymns" class="doc-toc-sub">Standalone Hymns PPT</a>
-            <a href="#data-tables">9. Data Tables</a>
-            <a href="#vmix">10. vMix integration (API)</a>
-            <a href="#monitoring">11. Monitoring</a>
-            <a href="#settings">12. Settings</a>
-            <a href="#troubleshooting">13. Tips &amp; troubleshooting</a>
+            <a href="#data-tables">10. Data Tables</a>
+            <a href="#vmix">11. vMix integration (API)</a>
+            <a href="#monitoring">12. Monitoring</a>
+            <a href="#settings">13. Settings</a>
+            <a href="#troubleshooting">14. Tips &amp; troubleshooting</a>
         </nav>
     </div>
 
@@ -683,8 +687,91 @@ Praise God, praise God</div>
         </div>
 
         <!-- ── 8. PPT generation ── -->
+        <!-- ── 8. Bible ── -->
+        <div class="cm-card p-4 mt-4 doc-section" id="bible">
+            <h4 class="mt-0"><span class="cm-chip cm-chip-indigo me-2"><i class="bi bi-book"></i></span>8. Bible</h4>
+            <p>
+                The Bible view (<code>/bible</code>) manages <strong>verse sets</strong> — named lists of
+                scripture entries served to vMix and exportable as PowerPoint. It works just like hymn
+                sets: cards on the left (the <strong>LIVE</strong> set feeds
+                <code>/api/bible/service</code>), and one set is always live. Sets can be renamed in
+                place, duplicated, deleted, and reordered by use.
+            </p>
+            <p class="mb-0">
+                Each <strong>entry</strong> combines one or more verse references — even from different
+                books — and becomes exactly <em>one feed row and one PPT slide</em>. Want each verse on
+                its own slide? Add each as its own entry.
+            </p>
+
+            <h5 class="doc-section" id="bible-translations">Translations</h5>
+            <ul>
+                <li>Every set has its own <strong>translation</strong>, chosen on the set card. Entries
+                    store canonical references, so switching a set's translation instantly re-renders all
+                    of its verses (and book names) in the new translation.</li>
+                <li>The app ships with the <strong>New King James Version</strong> built in. The
+                    <strong>Translations</strong> button opens a catalog of 200+ translations in
+                    ~40 languages — downloading needs internet once; afterwards everything works
+                    offline. Downloads are stored in the app's data directory.</li>
+                <li>If a set's translation was removed, the set shows a warning and its verses stop
+                    resolving until the translation is reinstalled (entries themselves are kept).</li>
+            </ul>
+
+            <h5 class="doc-section" id="bible-builder">Building entries</h5>
+            <ul>
+                <li>Type references naturally in the <strong>References</strong> box:
+                    <code>John 3:16</code>, a range <code>John 3:16-18</code>, a verse list
+                    <code>John 3:16,18</code>, a whole chapter <code>Psalms 23</code>.</li>
+                <li>Two separators control what becomes an entry:
+                    "<code>;</code>" <strong>combines</strong> references into one entry
+                    (<code>John 3:16; Romans 5:8</code> → one feed row / slide), while
+                    "<code>!</code>" <strong>separates</strong> entries
+                    (<code>John 3:16! Romans 5:8</code> → two rows / slides). Mix them freely:
+                    <code>John 3:16; Romans 5:8! Psalms 23</code> makes two entries. The preview
+                    shows exactly how the input divides into entries before you save.</li>
+                <li>Book names autocomplete in the set's language (typing <code>Пс</code> suggests
+                    <code>Псалтирь</code> in a Russian set), and shortened names work when unambiguous
+                    (<code>Gen 1:1</code>, <code>1 Cor 13</code>, <code>Ps 23</code>).</li>
+                <li>Prefer clicking? The <strong>Book / Chapter / From / To</strong> dropdowns build a
+                    reference and <strong>Insert</strong> appends it to the box — the arrow next to it
+                    chooses how: <em>add to current entry</em> (joins with <code>;</code>),
+                    <em>as a new entry</em> (joins with <code>!</code>), or
+                    <em>one entry per verse</em> (expands the selected range into a separate entry
+                    for every verse).</li>
+                <li>The <strong>Preview</strong> panel shows the resolved verse text live while you type;
+                    invalid references show the exact problem in red (unknown book, ambiguous
+                    abbreviation, chapter/verse out of range).</li>
+                <li>Entries drag-reorder by the grip handle; the pencil icon loads an entry back into the
+                    builder for editing.</li>
+            </ul>
+
+            <h5 class="doc-section" id="bible-output">Feed &amp; PPT</h5>
+            <ul>
+                <li><code>/api/bible/service</code> serves the live set, one row per entry with
+                    <code>Reference</code> (localized, e.g. <code>От Иоанна 3:16</code>),
+                    <code>VerseText</code>, and <code>Translation</code> (the set's translation,
+                    e.g. <code>NKJV</code>). When an entry spans multiple verses, verse numbers are
+                    included inline (<code>16 For God so loved… 17 For God sent not…</code>); a
+                    single-verse entry is plain text.</li>
+                <li>When an entry combines verses from <em>several places</em>, each passage starts on a
+                    new line under its own reference, so it is always clear where each one begins:
+                    <pre class="mb-0 mt-1"><code>John 3:16
+For God so loved the world…
+Romans 5:8
+But God demonstrates His own love…</code></pre></li>
+                <li>The <strong>PPT</strong> button on the set card opens the same settings dialog as the
+                    Hymns PPT — aspect ratio, font, sizes, background/text colors, and a live slide
+                    preview. Each entry becomes one slide: the verse text centered with the reference on
+                    a smaller bold line beneath it (multi-passage slides label each passage in-text
+                    instead).</li>
+                <li>Passages too long for one slide are <strong>split across slides automatically</strong>
+                    (estimated from your font sizes and aspect ratio), always at verse boundaries. Each
+                    continuation slide is labeled with the exact verses it shows — e.g.
+                    <code>Psalms 23:1-4</code>, then <code>Psalms 23:5-6</code>.</li>
+            </ul>
+        </div>
+
         <div class="cm-card p-4 mt-4 doc-section" id="ppt-generation">
-            <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-file-earmark-slides"></i></span>8. How PPTs are generated</h4>
+            <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-file-earmark-slides"></i></span>9. How PPTs are generated</h4>
 
             <h5 class="doc-section" id="ppt-program">Service Program PPT (template-based)</h5>
             <p>Available from the Dashboard and the program editor when a template is assigned. The generator makes three passes over a copy of your template:</p>
@@ -767,7 +854,7 @@ Praise God, praise God</div>
 
         <!-- ── 9. Data Tables ── -->
         <div class="cm-card p-4 mt-4 doc-section" id="data-tables">
-            <h4 class="mt-0"><span class="cm-chip cm-chip-amber me-2"><i class="bi bi-table"></i></span>9. Data Tables</h4>
+            <h4 class="mt-0"><span class="cm-chip cm-chip-amber me-2"><i class="bi bi-table"></i></span>10. Data Tables</h4>
             <p>
                 Data Tables (<code>/data-tables</code>) are free-form spreadsheets you define — announcements,
                 Bible verses, schedules, teams. Each table is served as a JSON feed for vMix and can
@@ -842,7 +929,7 @@ Praise God, praise God</div>
 
         <!-- ── 10. vMix integration ── -->
         <div class="cm-card p-4 mt-4 doc-section" id="vmix">
-            <h4 class="mt-0"><span class="cm-chip cm-chip-indigo me-2"><i class="bi bi-broadcast"></i></span>10. vMix integration (API)</h4>
+            <h4 class="mt-0"><span class="cm-chip cm-chip-indigo me-2"><i class="bi bi-broadcast"></i></span>11. vMix integration (API)</h4>
             <p>
                 In vMix, add a <strong>Data Source</strong> of type <em>JSON / URL</em> pointing at any of
                 these endpoints (use the machine's IP when vMix runs on another computer). vMix polls the URL
@@ -870,6 +957,12 @@ Praise God, praise God</div>
                         <td>Same shape for a specific program (404 if it doesn't exist).</td>
                     </tr>
                     <tr>
+                        <td><code>/api/bible/service</code></td>
+                        <td>The <strong>live verse set</strong>, one row per entry with
+                            <code>Reference</code>, <code>VerseText</code>, and
+                            <code>Translation</code> in the set's translation.</td>
+                    </tr>
+                    <tr>
                         <td><code>/api/feed/{slug}</code></td>
                         <td>A data table's rows as JSON objects keyed by column name, in row order.</td>
                     </tr>
@@ -891,10 +984,11 @@ Praise God, praise God</div>
 
         <!-- ── 11. Monitoring ── -->
         <div class="cm-card p-4 mt-4 doc-section" id="monitoring">
-            <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-graph-up"></i></span>11. Monitoring</h4>
+            <h4 class="mt-0"><span class="cm-chip cm-chip-emerald me-2"><i class="bi bi-graph-up"></i></span>12. Monitoring</h4>
             <ul>
                 <li>The Monitoring page shows <strong>live requests-per-second charts</strong> for
-                    <code>/api/hymns/service</code>, <code>/api/program/current</code>, and each data table
+                    <code>/api/hymns/service</code>, <code>/api/program/current</code>,
+                    <code>/api/bible/service</code>, and each data table
                     feed — a quick way to confirm vMix is actually polling.</li>
                 <li>Charts update every second over a rolling 60-second window; the badge next to each chart
                     shows the current rate.</li>
@@ -905,7 +999,7 @@ Praise God, praise God</div>
 
         <!-- ── 12. Settings ── -->
         <div class="cm-card p-4 mt-4 doc-section" id="settings">
-            <h4 class="mt-0"><span class="cm-chip cm-chip-violet me-2"><i class="bi bi-gear"></i></span>12. Settings</h4>
+            <h4 class="mt-0"><span class="cm-chip cm-chip-violet me-2"><i class="bi bi-gear"></i></span>13. Settings</h4>
             <ul>
                 <li><strong>Database File Path</strong> — where the SQLite database lives (all hymns,
                     programs, tables, and settings). <em>Changing it requires an app restart.</em> If you
@@ -951,7 +1045,7 @@ Praise God, praise God</div>
 
         <!-- ── 13. Troubleshooting ── -->
         <div class="cm-card p-4 mt-4 mb-4 doc-section" id="troubleshooting">
-            <h4 class="mt-0"><span class="cm-chip cm-chip-amber me-2"><i class="bi bi-life-preserver"></i></span>13. Tips &amp; troubleshooting</h4>
+            <h4 class="mt-0"><span class="cm-chip cm-chip-amber me-2"><i class="bi bi-life-preserver"></i></span>14. Tips &amp; troubleshooting</h4>
             <table class="table table-sm align-middle">
                 <thead><tr><th style="width: 40%;">Symptom</th><th>Likely cause &amp; fix</th></tr></thead>
                 <tbody>
